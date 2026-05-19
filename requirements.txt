@@ -1,0 +1,23 @@
+# Web Framework
+fastapi==0.104.1
+uvicorn[standard]==0.24.0
+
+# Database
+sqlalchemy==2.0.23
+alembic==1.12.1
+asyncpg==0.29.0
+psycopg2-binary==2.9.9
+
+# Data Validation - Pydantic v2 (will use Cargo)
+pydantic==2.7.4
+pydantic-settings==2.3.4
+python-dotenv==1.0.0
+
+# Authentication
+passlib[bcrypt]==1.7.4
+python-multipart==0.0.6
+itsdangerous==2.1.2
+python-jose[cryptography]==3.3.0
+bcrypt==4.0.1
+cryptography==41.0.7
+Pillow==12.2.0

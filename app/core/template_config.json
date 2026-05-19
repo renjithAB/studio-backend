@@ -1,0 +1,556 @@
+{
+  "templates": [
+    {
+      "code": "featurefilm",
+      "name": "Animation Feature Film",
+      "description": "Animation feature film template",
+      "thumbnail_url": "animation-template",
+      "tag": null
+    },
+    {
+      "code": "youtube",
+      "name": "Youtube Episodic",
+      "description": "YouTube Channel template (Suite for Episodic TV as well)",
+      "thumbnail_url": "youtube-template",
+      "tag": null
+    },
+    {
+      "code": "vfx",
+      "name": "Visual Effects",
+      "description": "Visual Effects template",
+      "thumbnail_url": "vfx-template",
+      "tag": null
+    },
+    {
+      "code": "shortfilm",
+      "name": "Short Film",
+      "description": "Short film template",
+      "thumbnail_url": "shortfilm-template",
+      "tag": null
+    },
+    {
+      "code": "trailer",
+      "name": "Trailer",
+      "description": "Trailer template",
+      "thumbnail_url": "trailer-template",
+      "tag": null
+    },
+    {
+      "code": "game",
+      "name": "Game",
+      "description": "Game template",
+      "thumbnail_url": "game-template",
+      "tag": null
+    }
+  ],
+  "domains": [
+    {
+      "code": "asset",
+      "name": "Asset",
+      "description": "Asset domain template",
+      "applies_to_templates": [
+        "featurefilm",
+        "youtube",
+        "vfx",
+        "shortfilm",
+        "trailer",
+        "game"
+      ]
+    },
+    {
+      "code": "episode",
+      "name": "Episode",
+      "description": "Episode domain template",
+      "applies_to_templates": ["youtube"]
+    },
+    {
+      "code": "editorial",
+      "name": "Editorial",
+      "description": "Editorial domain template",
+      "applies_to_templates": [
+        "featurefilm",
+        "youtube",
+        "vfx",
+        "shortfilm",
+        "trailer",
+        "game"
+      ]
+    },
+    {
+      "code": "library",
+      "name": "Library",
+      "description": "Library domain template",
+      "applies_to_templates": [
+        "featurefilm",
+        "youtube",
+        "vfx",
+        "shortfilm",
+        "trailer",
+        "game"
+      ]
+    },
+    {
+      "code": "cycle",
+      "name": "Cycle",
+      "description": "Cycles domain template",
+      "applies_to_templates": [
+        "featurefilm",
+        "youtube",
+        "vfx",
+        "shortfilm",
+        "trailer",
+        "game"
+      ]
+    }
+  ],
+  "categories": [
+    {
+      "code": "camera",
+      "name": "Camera",
+      "description": "Domain camera category template",
+      "domain_code": "asset"
+    },
+    {
+      "code": "character",
+      "name": "Character",
+      "description": "Domain character category template",
+      "domain_code": "asset"
+    },
+    {
+      "code": "prop",
+      "name": "Prop",
+      "description": "Domain prop category template",
+      "domain_code": "asset"
+    },
+    {
+      "code": "environment",
+      "name": "Environment",
+      "description": "Domain environment category template",
+      "domain_code": "asset"
+    },
+    {
+      "code": "light",
+      "name": "Light",
+      "description": "Domain light category template",
+      "domain_code": "asset"
+    },
+    {
+      "code": "vehicle",
+      "name": "Vehicle",
+      "description": "Domain vehicle category template",
+      "domain_code": "asset"
+    },
+    {
+      "code": "weapon",
+      "name": "Weapon",
+      "description": "Domain weapon category template",
+      "domain_code": "asset"
+    },
+    {
+      "code": "fx",
+      "name": "FX",
+      "description": "Domain FX category template",
+      "domain_code": "asset"
+    }
+  ],
+  "tasks": [
+    {
+      "code": "script",
+      "name": "Script",
+      "description": "Domain script task template",
+      "domain_code": "editorial",
+      "applies_to_templates": [
+        "featurefilm",
+        "youtube",
+        "vfx",
+        "shortfilm",
+        "trailer",
+        "game"
+      ]
+    },
+    {
+      "code": "timeline",
+      "name": "timeline",
+      "description": "Domain timeline task template",
+      "domain_code": "editorial",
+      "applies_to_templates": [
+        "featurefilm",
+        "youtube",
+        "vfx",
+        "shortfilm",
+        "trailer",
+        "game"
+      ]
+    },
+    {
+      "code": "artwork",
+      "name": "Art Work",
+      "description": "Domain art-work task template",
+      "domain_code": "asset",
+      "applies_to_templates": [
+        "featurefilm",
+        "youtube",
+        "vfx",
+        "shortfilm",
+        "trailer",
+        "game"
+      ]
+    },
+    {
+      "code": "modeling",
+      "name": "Modeling",
+      "description": "Domain modeling task template",
+      "domain_code": "asset",
+      "applies_to_templates": [
+        "featurefilm",
+        "youtube",
+        "vfx",
+        "shortfilm",
+        "trailer",
+        "game"
+      ]
+    },
+    {
+      "code": "grooming",
+      "name": "Grooming",
+      "description": "Domain grooming task template",
+      "domain_code": "asset",
+      "applies_to_templates": [
+        "featurefilm",
+        "youtube",
+        "vfx",
+        "shortfilm",
+        "trailer",
+        "game"
+      ]
+    },
+    {
+      "code": "texture",
+      "name": "Texture",
+      "description": "Domain texture task template",
+      "domain_code": "asset",
+      "applies_to_templates": [
+        "featurefilm",
+        "youtube",
+        "vfx",
+        "shortfilm",
+        "trailer",
+        "game"
+      ]
+    },
+    {
+      "code": "surfacing",
+      "name": "Surfacing",
+      "description": "Domain surfacing task template",
+      "domain_code": "asset",
+      "applies_to_templates": [
+        "featurefilm",
+        "youtube",
+        "vfx",
+        "shortfilm",
+        "trailer",
+        "game"
+      ]
+    },
+    {
+      "code": "rigging",
+      "name": "Rigging",
+      "description": "Domain rigging task template",
+      "domain_code": "asset",
+      "applies_to_templates": [
+        "featurefilm",
+        "youtube",
+        "vfx",
+        "shortfilm",
+        "trailer",
+        "game"
+      ]
+    },
+    {
+      "code": "tracking",
+      "name": "Tracking",
+      "description": "Domain tracking task template",
+      "domain_code": "shot",
+      "applies_to_templates": ["vfx"]
+    },
+    {
+      "code": "matchmovie",
+      "name": "Match Movie",
+      "description": "Domain match-movie task template",
+      "domain_code": "shot",
+      "applies_to_templates": ["vfx"]
+    },
+    {
+      "code": "blocking",
+      "name": "Blocking",
+      "description": "Domain blocking task template",
+      "domain_code": "shot",
+      "applies_to_templates": [
+        "featurefilm",
+        "youtube",
+        "vfx",
+        "shortfilm",
+        "trailer",
+        "game"
+      ]
+    },
+    {
+      "code": "layout",
+      "name": "Layout",
+      "description": "Domain layout task template",
+      "domain_code": "shot",
+      "applies_to_templates": [
+        "featurefilm",
+        "youtube",
+        "vfx",
+        "shortfilm",
+        "trailer",
+        "game"
+      ]
+    },
+    {
+      "code": "animation",
+      "name": "Animation",
+      "description": "Domain animation task template",
+      "domain_code": "shot",
+      "applies_to_templates": [
+        "featurefilm",
+        "youtube",
+        "vfx",
+        "shortfilm",
+        "trailer",
+        "game"
+      ]
+    },
+    {
+      "code": "clothFX",
+      "name": "Cloth FX",
+      "description": "Domain cloth-FX task template",
+      "domain_code": "shot",
+      "applies_to_templates": [
+        "featurefilm",
+        "youtube",
+        "vfx",
+        "shortfilm",
+        "trailer"
+      ]
+    },
+    {
+      "code": "furFX",
+      "name": "Fur FX",
+      "description": "Domain fur-FX task template",
+      "domain_code": "shot",
+      "applies_to_templates": [
+        "featurefilm",
+        "youtube",
+        "vfx",
+        "shortfilm",
+        "trailer"
+      ]
+    },
+    {
+      "code": "specialFX",
+      "name": "Special FX",
+      "description": "Domain special-FX task template",
+      "domain_code": "shot",
+      "applies_to_templates": [
+        "featurefilm",
+        "youtube",
+        "vfx",
+        "shortfilm",
+        "trailer"
+      ]
+    },
+    {
+      "code": "rendering",
+      "name": "Rendering",
+      "description": "Domain rendering task template",
+      "domain_code": "shot",
+      "applies_to_templates": [
+        "featurefilm",
+        "youtube",
+        "vfx",
+        "shortfilm",
+        "trailer"
+      ]
+    },
+    {
+      "code": "rotoscopy",
+      "name": "Rotoscopy",
+      "description": "Domain rotoscopy task template",
+      "domain_code": "shot",
+      "applies_to_templates": ["vfx"]
+    },
+    {
+      "code": "compositing",
+      "name": "Compositing",
+      "description": "Domain compositing task template",
+      "domain_code": "shot",
+      "applies_to_templates": [
+        "featurefilm",
+        "youtube",
+        "vfx",
+        "shortfilm",
+        "trailer",
+        "game"
+      ]
+    },
+    {
+      "code": "model",
+      "name": "Model",
+      "description": "Domain model task template",
+      "domain_code": "library",
+      "applies_to_templates": [
+        "featurefilm",
+        "youtube",
+        "vfx",
+        "shortfilm",
+        "trailer",
+        "game"
+      ]
+    },
+    {
+      "code": "shader",
+      "name": "Shader",
+      "description": "Domain shader task template",
+      "domain_code": "library",
+      "applies_to_templates": [
+        "featurefilm",
+        "youtube",
+        "vfx",
+        "shortfilm",
+        "trailer",
+        "game"
+      ]
+    },
+    {
+      "code": "pose",
+      "name": "Pose",
+      "description": "Domain pose task template",
+      "domain_code": "library",
+      "applies_to_templates": [
+        "featurefilm",
+        "youtube",
+        "vfx",
+        "shortfilm",
+        "trailer",
+        "game"
+      ]
+    },
+    {
+      "code": "anim",
+      "name": "Anim",
+      "description": "Domain anim task template",
+      "domain_code": "library",
+      "applies_to_templates": [
+        "featurefilm",
+        "youtube",
+        "vfx",
+        "shortfilm",
+        "trailer",
+        "game"
+      ]
+    },
+    {
+      "code": "other",
+      "name": "Other",
+      "description": "Domain other task template",
+      "domain_code": "library",
+      "applies_to_templates": [
+        "featurefilm",
+        "youtube",
+        "vfx",
+        "shortfilm",
+        "trailer",
+        "game"
+      ]
+    },
+    {
+      "code": "walk",
+      "name": "Walk",
+      "description": "Domain walk task template",
+      "domain_code": "cycle",
+      "applies_to_templates": [
+        "featurefilm",
+        "youtube",
+        "vfx",
+        "shortfilm",
+        "trailer",
+        "game"
+      ]
+    },
+    {
+      "code": "run",
+      "name": "Run",
+      "description": "Domain run task template",
+      "domain_code": "cycle",
+      "applies_to_templates": [
+        "featurefilm",
+        "youtube",
+        "vfx",
+        "shortfilm",
+        "trailer",
+        "game"
+      ]
+    },
+    {
+      "code": "action",
+      "name": "Action",
+      "description": "Domain action task template",
+      "domain_code": "cycle",
+      "applies_to_templates": [
+        "featurefilm",
+        "youtube",
+        "vfx",
+        "shortfilm",
+        "trailer",
+        "game"
+      ]
+    },
+    {
+      "code": "acting",
+      "name": "Acting",
+      "description": "Domain acting task template",
+      "domain_code": "cycle",
+      "applies_to_templates": [
+        "featurefilm",
+        "youtube",
+        "vfx",
+        "shortfilm",
+        "trailer",
+        "game"
+      ]
+    },
+    {
+      "code": "more",
+      "name": "More",
+      "description": "Domain other task template",
+      "domain_code": "cycle",
+      "applies_to_templates": [
+        "featurefilm",
+        "youtube",
+        "vfx",
+        "shortfilm",
+        "trailer",
+        "game"
+      ]
+    }
+  ],
+
+  "publish": [
+    {
+      "code": "submit",
+      "name": "Submit publish type",
+      "tier": "publishTemplate",
+      "template": "None",
+      "description": "Submit publish type"
+    },
+    {
+      "code": "release",
+      "name": "Release publish type",
+      "tier": "publishTemplate",
+      "template": "None",
+      "description": "Release publish type"
+    }
+  ]
+}
