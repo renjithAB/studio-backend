@@ -1,8 +1,7 @@
 from sqlalchemy.orm import Session
 from app.models.shot import Shot
 from app.schemas.shot import ShotCreate, ShotResponse
-from app.schemas.task import TaskCreate
-from app.crud.crud_task import task as crud_task
+
 from app.models.sequence import Sequence
 from app.models.episode import Episode
 from typing import Optional, List
@@ -43,21 +42,26 @@ class ShotService:
             sequence = db.get(Sequence, shot_in.sequence_id)
             domain_id = 0
             if sequence:
-                episode = db.get(Episode, sequence.episode_id)
-                if episode:
-                    domain_id = episode.domain_id
+                from app.models.domain import Domain
+                domain = db.query(Domain).filter(
+                    Domain.project_id == shot_in.project_id,
+                    Domain.domain_type.in_(['episode', 'editorial'])
+                ).first()
+                if domain:
+                    domain_id = domain.id
 
+            from app.models.task import Task
             for task_code in shot_in.tasks:
-                task_in_data = TaskCreate(
+                task_obj = Task(
                     code=task_code,
                     name=task_code.capitalize(),
                     project_id=shot_in.project_id,
-                    domain_id=domain_id or 0,
                     episode_id=sequence.episode_id if sequence else None,
                     sequence_id=shot_in.sequence_id,
                     shot_id=db_obj.id,
                     is_active=True
                 )
-                crud_task.create(db=db, obj_in=task_in_data)
+                db.add(task_obj)
+            db.commit()
 
         return db_obj

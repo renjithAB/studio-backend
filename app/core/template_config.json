@@ -61,7 +61,13 @@
       "code": "episode",
       "name": "Episode",
       "description": "Episode domain template",
-      "applies_to_templates": ["youtube"]
+      "applies_to_templates": ["featurefilm", "youtube"]
+    },
+    {
+      "code": "sequence",
+      "name": "Sequence",
+      "description": "Sequence domain template",
+      "applies_to_templates": ["featurefilm", "youtube", "vfx", "shortfilm", "trailer", "game"]
     },
     {
       "code": "editorial",

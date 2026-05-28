@@ -19,6 +19,11 @@ class Project(BaseModel):
     
     # Relationships
     template = relationship('Template')
+    
+    @property
+    def template_name(self):
+        return self.template.name if self.template else None
+
     domains = relationship('Domain', back_populates='project', cascade='all, delete-orphan')
     categories = relationship('Category', back_populates='project', cascade='all, delete-orphan')
     episodes = relationship('Episode', back_populates='project')

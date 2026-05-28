@@ -48,6 +48,7 @@ class ProjectUpdate(BaseModel):
 class ProjectOut(ProjectBase):
     id: int = Field(..., ge=1000, description="Project ID must be 1000 or greater")
     is_active: bool
+    template_name: Optional[str] = None
     created_at: Optional[datetime] = None
     created_by: Optional[int] = Field(None, ge=1000, description="Created by user ID must be 1000 or greater")
     updated_at: Optional[datetime] = None

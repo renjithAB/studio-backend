@@ -8,8 +8,18 @@ class CRUDVersion:
         return db.query(Version).filter(Version.id == id, Version.is_active == True).first()
 
     def create(self, db: Session, *, obj_in: VersionCreate, created_by: Optional[int] = None) -> Version:
+        # Generate sequential code starting from 000001
+        from sqlalchemy import text
+        try:
+            next_val = db.execute(text("SELECT nextval('version_code_seq')")).scalar()
+            code_seq = f"{next_val:06d}"
+        except Exception:
+            from sqlalchemy import func
+            max_id = db.query(func.max(Version.id)).scalar() or 0
+            code_seq = f"{max_id + 1:06d}"
+
         db_obj = Version(
-            code=obj_in.code,
+            code=code_seq,
             name=obj_in.name,
             version_number=obj_in.version_number,
             project_id=obj_in.project_id,

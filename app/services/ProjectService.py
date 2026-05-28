@@ -33,6 +33,8 @@ _CONFIG_PATH = Path(__file__).parent.parent / "core" / "template_config.json"
 with open(_CONFIG_PATH, "r", encoding="utf-8") as f:
     TEMPLATE_CONFIG = json.load(f)
 
+from app.models.task_template import TaskTemplate, task_template_project_mappings
+
 class ProjectService:
     
     @staticmethod
@@ -116,11 +118,25 @@ class ProjectService:
         template_code = template.code
 
         # 5. Determine which domains apply to this template
+        # Episode domain only created for episodic templates; non-episodic get sequence instead
         applicable_domains = []
         for dom in TEMPLATE_CONFIG["domains"]:
+            # Skip library and cycle on project creation
+            if dom.get("code") in ["library", "cycle"]:
+                continue
+            # Episode domain: only include if template is episodic
+            if dom.get("code") == "episode":
+                if template.has_episode:
+                    applicable_domains.append(dom)
+                continue
+            # Sequence domain: only include if template is NOT episodic
+            if dom.get("code") == "sequence":
+                if not template.has_episode:
+                    applicable_domains.append(dom)
+                continue
             if template_code in dom.get("applies_to_templates", []):
                 applicable_domains.append(dom)
-        print(f"Found {len(applicable_domains)} applicable domains")
+        print(f"Found {len(applicable_domains)} applicable domains (has_episode={template.has_episode})")
 
         # 6. Create Domain records
         domain_by_code: Dict[str, Domain] = {}
@@ -142,15 +158,12 @@ class ProjectService:
         # 7. Create Categories under the Asset domain (if present)
         if "asset" in domain_by_code:
             asset_domain = domain_by_code["asset"]
-            asset_categories = [
-                cat for cat in TEMPLATE_CONFIG["categories"]
-                if cat.get("domain_code") == "asset"
-            ]
-            for cat_def in asset_categories:
+            asset_categories = db.query(Template).filter(Template.tag == 'category', Template.is_active == True).all()
+            for cat_tmpl in asset_categories:
                 category = Category(
-                    code=cat_def["code"],
-                    name=cat_def["name"],
-                    description=cat_def.get("description"),
+                    code=cat_tmpl.code,
+                    name=cat_tmpl.name,
+                    description=cat_tmpl.description,
                     domain_id=asset_domain.id,
                     project_id=project.id,
                     created_by=created_by,
@@ -178,44 +191,60 @@ class ProjectService:
             print(f"\n✓ CREATED EPISODE: {episode.code} (ID: {episode.id})")
 
         # Sequence
+        # For episodic templates: sequence is under the episode
+        # For non-episodic templates: sequence is at project level (no episode)
         sequence = None
         shots = []
-        if "sequence" in domain_by_code:
+        if template.has_episode and episode:
+            # Episodic — create one default sequence under the episode
             sequence = Sequence(
                 code="SQ01",
                 name="Sequence 01",
                 description=f"Default sequence for {project.name}",
                 project_id=project.id,
-                episode_id=episode.id if episode else None,
-                # domain_id=domain_by_code["sequence"].id,
+                episode_id=episode.id,
                 frame_start=1001,
                 frame_end=1100,
                 created_by=created_by,
             )
             db.add(sequence)
             db.flush()
-            print(f"✓ CREATED SEQUENCE: {sequence.code} (ID: {sequence.id})")
+            print(f"✓ CREATED SEQUENCE (under episode): {sequence.code} (ID: {sequence.id})")
+        elif not template.has_episode and "sequence" in domain_by_code:
+            # Non-episodic — create sequence directly at project level
+            sequence = Sequence(
+                code="SQ01",
+                name="Sequence 01",
+                description=f"Default sequence for {project.name}",
+                project_id=project.id,
+                episode_id=None,
+                frame_start=1001,
+                frame_end=1100,
+                created_by=created_by,
+            )
+            db.add(sequence)
+            db.flush()
+            print(f"✓ CREATED SEQUENCE (project-level): {sequence.code} (ID: {sequence.id})")
 
-            # Shots under this sequence
-            if "shot" in domain_by_code:
-                shot_domain = domain_by_code["shot"]
-                for i in range(1, 4):
-                    shot = Shot(
-                        code=f"SH00{i}",
-                        name=f"Shot 00{i}",
-                        description=f"Default shot {i} for {project.name}",
-                        project_id=project.id,
-                        sequence_id=sequence.id,
-                        # domain_id=shot_domain.id,
-                        frame_start=1001 + ((i-1) * 25),
-                        frame_end=1001 + (i * 25) - 1,
-                        asset_ids=[],
-                        created_by=created_by,
-                    )
-                    db.add(shot)
-                    db.flush()
-                    shots.append(shot)
-                    print(f"  ✓ CREATED SHOT: {shot.code} (ID: {shot.id})")
+        # Shots under the sequence (applies for both episodic and non-episodic paths)
+        if sequence and "shot" in domain_by_code:
+            shot_domain = domain_by_code["shot"]
+            for i in range(1, 4):
+                shot = Shot(
+                    code=f"SH00{i}",
+                    name=f"Shot 00{i}",
+                    description=f"Default shot {i} for {project.name}",
+                    project_id=project.id,
+                    sequence_id=sequence.id,
+                    frame_start=1001 + ((i-1) * 25),
+                    frame_end=1001 + (i * 25) - 1,
+                    asset_ids=[],
+                    created_by=created_by,
+                )
+                db.add(shot)
+                db.flush()
+                shots.append(shot)
+                print(f"  ✓ CREATED SHOT: {shot.code} (ID: {shot.id})")
 
         # Assets
         assets = []
@@ -274,18 +303,18 @@ class ProjectService:
 
         # Library
         library = None
-        if "library" in domain_by_code:
-            library = Library(
-                code="LIB01",
-                name="Library 01",
-                description=f"Default library for {project.name}",
-                project_id=project.id,
-                # domain_id=domain_by_code["library"].id,
-                created_by=created_by,
-            )
-            db.add(library)
-            db.flush()
-            print(f"✓ CREATED LIBRARY: {library.code} (ID: {library.id})")
+        # if "library" in domain_by_code:
+        #     library = Library(
+        #         code="LIB01",
+        #         name="Library 01",
+        #         description=f"Default library for {project.name}",
+        #         project_id=project.id,
+        #         # domain_id=domain_by_code["library"].id,
+        #         created_by=created_by,
+        #     )
+        #     db.add(library)
+        #     db.flush()
+        #     print(f"✓ CREATED LIBRARY: {library.code} (ID: {library.id})")
 
         # Cycles
         cycles = []
@@ -306,9 +335,30 @@ class ProjectService:
                 cycles.append(cycle)
                 print(f"  ✓ CREATED CYCLE: {cycle.code} (ID: {cycle.id})")
 
-        # 9. Create Tasks based on JSON config
-        # Tasks are defined with domain_code and applies_to_templates
-        task_definitions = TEMPLATE_CONFIG.get("tasks", [])
+        # 9. Create Tasks from DB (task_templates table joined with project template)
+        # Load task templates that apply to this project template
+        task_definitions_db = (
+            db.query(TaskTemplate)
+            .join(
+                task_template_project_mappings,
+                TaskTemplate.id == task_template_project_mappings.c.task_template_id
+            )
+            .filter(task_template_project_mappings.c.project_template_id == template.id)
+            .all()
+        )
+        print(f"Found {len(task_definitions_db)} task templates in DB for {template_code}")
+
+        # Convert DB objects to same dict shape the loop below expects
+        task_definitions = [
+            {
+                "code": t.code,
+                "name": t.name,
+                "description": t.description,
+                "domain_code": t.domain_code.value if hasattr(t.domain_code, 'value') else t.domain_code,
+                "applies_to_templates": [template_code],  # already filtered above
+            }
+            for t in task_definitions_db
+        ]
         for task_def in task_definitions:
             if template_code not in task_def.get("applies_to_templates", []):
                 continue
@@ -395,12 +445,19 @@ class ProjectService:
                     db.add(task)
                     print(f"  ✓ CREATED TASK: {task.code} for Cycle {cycle.code}")
 
-        publish_definitions = TEMPLATE_CONFIG.get("publish", [])
-        for pub_def in publish_definitions:
+        # 10. Create Publish Types from DB (templates table, tag='publish')
+        publish_definitions = (
+            db.query(Template)
+            .filter(Template.tag == "publish", Template.is_active == True)
+            .order_by(Template.id)
+            .all()
+        )
+        print(f"Found {len(publish_definitions)} publish type templates in DB")
+        for pub_tmpl in publish_definitions:
             publish_type = PublishType(
-                code=pub_def["code"],
-                name=pub_def["name"],
-                description=pub_def.get("description"),
+                code=pub_tmpl.code,
+                name=pub_tmpl.name,
+                description=pub_tmpl.description,
                 project_id=project.id,
                 created_by=created_by,
                 updated_by=created_by,

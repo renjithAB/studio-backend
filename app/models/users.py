@@ -16,8 +16,9 @@ class User(BaseModel):
     last_login_at = Column(DateTime(timezone=True), nullable=True)
     last_activity_at = Column(DateTime(timezone=True), nullable=True)
     
-    role_id = Column(BigInteger, ForeignKey('templates.id'), nullable=True)
-    permission_id = Column(BigInteger, ForeignKey('templates.id'), nullable=True)
+    # Role/Permission links to dedicated tables
+    role_id = Column(BigInteger, ForeignKey('roles.id', ondelete='SET NULL'), nullable=True)
+    permission_id = Column(BigInteger, ForeignKey('permissions.id', ondelete='SET NULL'), nullable=True)
     is_super = Column(Boolean, nullable=False, default=False)
     
     show_link = Column(JSON, nullable=True)
@@ -29,11 +30,11 @@ class User(BaseModel):
     preferences = Column(JSON, nullable=False, default={})
     
     synced_to_superadmin = Column(Boolean, nullable=False, default=False)
-    superadmin_user_id = Column(String(36), nullable=True)  # Keep as String for external system ID
+    superadmin_user_id = Column(String(36), nullable=True)
     last_synced_at = Column(DateTime(timezone=True), nullable=True)
     deleted_at = Column(DateTime(timezone=True), nullable=True)
     is_deleted = Column(Boolean, nullable=False, default=False)
     
-    # Relationships
-    role = relationship('Template', foreign_keys=[role_id])
-    permission = relationship('Template', foreign_keys=[permission_id])
+    # Relationships to dedicated Role and Permission models
+    role = relationship('Role', foreign_keys=[role_id], lazy='selectin')
+    permission = relationship('Permission', foreign_keys=[permission_id], lazy='selectin')

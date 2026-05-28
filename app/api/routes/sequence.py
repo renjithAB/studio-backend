@@ -30,16 +30,17 @@ def create_sequence(
             detail=f"Project with id {sequence_in.project_id} not found"
         )
 
-    # 2. Check if episode exists and belongs to the same project
-    episode = db.query(Episode).filter(
-        Episode.id == sequence_in.episode_id,
-        Episode.project_id == sequence_in.project_id
-    ).first()
-    if not episode:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Episode with id {sequence_in.episode_id} not found in project {sequence_in.project_id}"
-        )
+    # 2. Check if episode exists and belongs to the same project (if episode_id is provided)
+    if sequence_in.episode_id is not None:
+        episode = db.query(Episode).filter(
+            Episode.id == sequence_in.episode_id,
+            Episode.project_id == sequence_in.project_id
+        ).first()
+        if not episode:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Episode with id {sequence_in.episode_id} not found in project {sequence_in.project_id}"
+            )
 
     # 3. Check for duplicate code within the same project
     existing = db.query(Sequence).filter(

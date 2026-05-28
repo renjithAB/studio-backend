@@ -18,14 +18,24 @@ def create_episode(
     *,
     db: Session = Depends(get_db),
     episode_in: EpisodeCreate,
-    current_user: User = Depends(get_current_user),  # optional auth
+    current_user: User = Depends(get_current_user),
 ):
-    """Create a new episode."""
-    # Optional: check if project exists
+    """Create a new episode. Only allowed for episodic templates (has_episode=True)."""
+    # Check if project exists
     project = db.query(Project).filter(Project.id == episode_in.project_id).first()
     if not project:
         raise HTTPException(status_code=404, detail="Project not found")
-    
+
+    # Guard: only episodic templates support episodes
+    if project.template_id:
+        from app.models.template import Template
+        template = db.query(Template).filter(Template.id == project.template_id).first()
+        if template and not template.has_episode:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Project template '{template.name}' is non-episodic. Use sequences instead of episodes."
+            )
+
     existing = db.query(Episode).filter(
         Episode.project_id == episode_in.project_id,
         Episode.code == episode_in.code

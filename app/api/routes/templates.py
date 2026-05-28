@@ -7,11 +7,12 @@ from sqlalchemy.orm import Session
 
 from app.auth.dependencies import get_current_user, get_db
 from app.crud.crud_template import template as crud_template
+from app.crud.crud_task_template import task_template as crud_task_template
 from app.schemas.template import TemplateCreate, TemplateUpdate, TemplateOut
 from app.models.users import User
 from app.models.project import Project 
 from app.models.template import Template
-from app.schemas.template import TaskTemplateOut
+from app.schemas.task_template import TaskTemplateOut, TaskTemplateCreate, TaskTemplateUpdate
 
 router = APIRouter()
 
@@ -45,7 +46,83 @@ def list_templates(
     current_user: User = Depends(get_current_user)
 ):
     """Get all templates with optional filters"""
-    return crud_template.get_multi(db, skip=skip, limit=limit, tier=tier, domain=domain)
+    res = crud_template.get_multi(db, skip=skip, limit=limit, tier=tier, domain=domain)
+    
+    merged_templates = []
+    for t in res:
+        merged_templates.append(t)
+        
+    # Query task templates and append them
+    from app.models.task_template import TaskTemplate
+    task_templates = db.query(TaskTemplate).filter(TaskTemplate.is_active == True).all()
+    
+    class TaskTemplateAdapter:
+        def __init__(self, task_tmpl):
+            self.id = task_tmpl.id
+            self.code = task_tmpl.code
+            self.name = task_tmpl.name
+            self.description = task_tmpl.description
+            self.thumbnail_url = None
+            self.tag = "task"
+            self.has_episode = False
+            self.is_active = task_tmpl.is_active
+            self.applicable_templates = ",".join(task_tmpl.applies_to_templates)
+            self.created_at = task_tmpl.created_at
+            self.updated_at = task_tmpl.updated_at
+            self.created_by = task_tmpl.created_by
+            self.updated_by = task_tmpl.updated_by
+
+    for tt in task_templates:
+        merged_templates.append(TaskTemplateAdapter(tt))
+        
+    # Query roles and append them
+    from app.models.role import Role
+    roles = db.query(Role).all()
+    
+    class RoleAdapter:
+        def __init__(self, role):
+            self.id = role.id
+            self.code = role.code
+            self.name = role.name
+            self.description = role.description
+            self.thumbnail_url = None
+            self.tag = "role"
+            self.has_episode = False
+            self.is_active = role.is_active
+            self.applicable_templates = None
+            self.created_at = role.created_at
+            self.updated_at = role.updated_at
+            self.created_by = role.created_by
+            self.updated_by = role.updated_by
+
+    for r in roles:
+        merged_templates.append(RoleAdapter(r))
+        
+    # Query permissions and append them
+    from app.models.permission import Permission
+    permissions = db.query(Permission).all()
+    
+    class PermissionAdapter:
+        def __init__(self, perm):
+            self.id = perm.id
+            self.code = perm.code
+            self.name = perm.name
+            self.description = perm.description
+            self.thumbnail_url = None
+            self.tag = "permission"
+            self.has_episode = False
+            self.is_active = perm.is_active
+            self.applicable_templates = None
+            self.created_at = perm.created_at
+            self.updated_at = perm.updated_at
+            self.created_by = perm.created_by
+            self.updated_by = perm.updated_by
+
+    for p in permissions:
+        merged_templates.append(PermissionAdapter(p))
+        
+    print(f"DEBUG: list_templates endpoint fetched {len(merged_templates)} merged templates from DB")
+    return merged_templates
 
 @router.get("/domains/project/{project_id}", response_model=List[TemplateOut])
 def get_domain_templates_for_project(
@@ -77,9 +154,13 @@ def get_task_templates(
     """
     Get task templates filtered by domain type and the project's base template.
     """
-    # 1. Resolve the Project Template Code (if project_id is provided)
-    project_template_code = None
+    from app.models.task_template import TaskTemplate
     
+    query = db.query(TaskTemplate).filter(TaskTemplate.is_active == True)
+    
+    if type:
+        query = query.filter(TaskTemplate.domain_code == type)
+        
     if project_id:
         project_id = validate_id(project_id)
         
@@ -90,44 +171,62 @@ def get_task_templates(
             
         # Fetch the template assigned to the project
         if project.template_id:
-            template = db.query(Template).filter(Template.id == project.template_id).first()
-            if template:
-                project_template_code = template.code
-            else:
-                raise HTTPException(status_code=404, detail="Assigned project template not found in DB")
+            query = query.filter(TaskTemplate.project_templates.any(Template.id == project.template_id))
         else:
             raise HTTPException(status_code=400, detail="Project does not have a template_id assigned")
-
-    # 2. Load the JSON configuration
-    # Ensure this path matches the location relative to where you run your FastAPI app
-    config_path = os.path.join("app/core", "template_config.json")
-    
-    try:
-        with open(config_path, "r") as f:
-            config_data = json.load(f)
-    except FileNotFoundError:
-        raise HTTPException(status_code=500, detail="template_config.json file not found")
-    except json.JSONDecodeError:
-        raise HTTPException(status_code=500, detail="Error decoding template_config.json")
-
-    all_tasks = config_data.get("tasks", [])
-    filtered_tasks = []
-
-    # 3. Filter the tasks
-    for task in all_tasks:
-        # Filter by domain_code (mapped from the 'type' query param)
-        if type and task.get("domain_code") != type:
-            continue
             
-        # Filter by project template code
-        if project_template_code:
-            applies_to = task.get("applies_to_templates", [])
-            if project_template_code not in applies_to:
-                continue
-                
-        filtered_tasks.append(task)
+    return query.all()
 
-    return filtered_tasks
+@router.post("/tasks", response_model=TaskTemplateOut, status_code=201)
+def create_task_template(
+    data: TaskTemplateCreate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Create a new task template (admin only)"""
+    if not current_user.is_super:
+        raise HTTPException(status_code=403, detail="Only super users can create task templates")
+    
+    if crud_task_template.get_by_code(db, code=data.code):
+        raise HTTPException(status_code=409, detail=f"Task template with code '{data.code}' already exists")
+    
+    return crud_task_template.create(db, obj_in=data, created_by=current_user.id)
+
+@router.put("/tasks/{task_id}", response_model=TaskTemplateOut)
+def update_task_template(
+    task_id: int,
+    data: TaskTemplateUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Update a task template (admin only)"""
+    if not current_user.is_super:
+        raise HTTPException(status_code=403, detail="Only super users can update task templates")
+    
+    task_id = validate_id(task_id)
+    db_task = crud_task_template.get(db, id=task_id)
+    if not db_task:
+        raise HTTPException(status_code=404, detail="Task template not found")
+        
+    return crud_task_template.update(db, db_obj=db_task, obj_in=data, updated_by=current_user.id)
+
+@router.delete("/tasks/{task_id}")
+def delete_task_template(
+    task_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Soft delete a task template (admin only)"""
+    if not current_user.is_super:
+        raise HTTPException(status_code=403, detail="Only super users can delete task templates")
+    
+    task_id = validate_id(task_id)
+    db_task = crud_task_template.get(db, id=task_id)
+    if not db_task:
+        raise HTTPException(status_code=404, detail="Task template not found")
+        
+    crud_task_template.soft_delete(db, id=task_id)
+    return {"success": True, "id": task_id}
 
 @router.get("/publish", response_model=List[TemplateOut])
 def get_publish_templates(
@@ -138,19 +237,21 @@ def get_publish_templates(
     return crud_template.get_publish_templates(db)
 
 @router.get("/publish-config")
-def get_publish_config_from_file(
+def get_publish_config(
+    db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    """Return publish types defined in template_config.json (no DB needed)."""
-    config_path = os.path.join("app/core", "template_config.json")
-    try:
-        with open(config_path, "r") as f:
-            config_data = json.load(f)
-    except FileNotFoundError:
-        raise HTTPException(status_code=500, detail="template_config.json not found")
-    except json.JSONDecodeError:
-        raise HTTPException(status_code=500, detail="Error decoding template_config.json")
-    return config_data.get("publish", [])
+    """Return publish types from the templates table (tag='publish')."""
+    publish_templates = (
+        db.query(Template)
+        .filter(Template.tag == "publish", Template.is_active == True)
+        .order_by(Template.id)
+        .all()
+    )
+    return [
+        {"code": t.code, "name": t.name, "description": t.description}
+        for t in publish_templates
+    ]
 
 @router.get("/{template_id}", response_model=TemplateOut)
 def get_template(
@@ -208,9 +309,23 @@ def update_template(
     # Validate template_id
     template_id = validate_id(template_id)
     
-    template = crud_template.get(db, id=template_id)
+    template = db.query(Template).filter(Template.id == template_id).first()
     if not template:
         raise HTTPException(status_code=404, detail="Template not found")
+        
+    # Prevent editing fields other than 'name' for default system templates
+    DEFAULT_TEMPLATE_CODES = {
+        "featurefilm", "youtube", "vfx", "shortfilm", "trailer", "game",
+        "asset", "episode", "editorial", "library", "cycle"
+    }
+    if template.code in DEFAULT_TEMPLATE_CODES:
+        update_fields = data.model_dump(exclude_unset=True)
+        invalid_fields = [k for k in update_fields.keys() if k != "name"]
+        if invalid_fields:
+            raise HTTPException(
+                status_code=400,
+                detail=f"For default system templates, only the 'name' field is editable. Cannot edit: {', '.join(invalid_fields)}"
+            )
     
     return crud_template.update(db, db_obj=template, obj_in=data, updated_by=current_user.id)
 
@@ -227,8 +342,21 @@ def delete_template(
     # Validate template_id
     template_id = validate_id(template_id)
     
-    template = crud_template.soft_delete(db, id=template_id)
+    # Check if the template exists
+    template = db.query(Template).filter(Template.id == template_id).first()
     if not template:
         raise HTTPException(status_code=404, detail="Template not found")
+        
+    # Prevent deleting default system templates
+    DEFAULT_TEMPLATE_CODES = {
+        "featurefilm", "youtube", "vfx", "shortfilm", "trailer", "game",
+        "asset", "episode", "editorial", "library", "cycle"
+    }
+    if template.code in DEFAULT_TEMPLATE_CODES:
+        raise HTTPException(
+            status_code=400,
+            detail="Default system templates cannot be deleted"
+        )
     
+    crud_template.soft_delete(db, id=template_id)
     return {"success": True, "id": template_id}

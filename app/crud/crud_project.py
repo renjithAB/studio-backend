@@ -1,12 +1,12 @@
 from typing import List, Optional
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 from app.models.project import Project
 from app.schemas.project import ProjectCreate, ProjectUpdate
 
 class CRUDProject:
 
     def get(self, db: Session, id: int) -> Optional[Project]:
-        return db.query(Project).filter(
+        return db.query(Project).options(joinedload(Project.template)).filter(
             Project.id == id,
             Project.is_active == True
         ).first()
@@ -23,7 +23,7 @@ class CRUDProject:
         limit: int = 100,
         type: Optional[str] = None,
     ) -> List[Project]:
-        q = db.query(Project).filter(Project.is_active == True)
+        q = db.query(Project).options(joinedload(Project.template)).filter(Project.is_active == True)
         if type:
             q = q.filter(Project.type == type)
         return q.order_by(Project.created_at.desc()).offset(skip).limit(limit).all()

@@ -93,169 +93,336 @@ class HierarchyService:
         
         header_id = -1  # negative IDs for headers
         
-        # ==================== EPISODES SECTION ====================
-        episode_domain = domain_map.get('episode')
-        if episode_domain:
-            episodes_header = HierarchyEntity(
-                id=episode_domain.id,
+        # Check if project template is "Animation Feature Film" (code: "featurefilm")
+        is_feature_film = False
+        if project.template and (project.template.code == "featurefilm" or project.template.name == "Animation Feature Film"):
+            is_feature_film = True
+
+        if is_feature_film:
+            # ==================== FEATURE FILM SEQUENCES SECTION ====================
+            sequences_header = HierarchyEntity(
+                id=-100,
                 type="domain",
-                domain_type='episode',
-                code="EPISODES",
-                name="Episodes",
-                description="All episodes in this project",
+                domain_type='sequence',
+                code="SEQUENCES",
+                name="Sequences",
+                description="All sequences in this project",
                 children=[],
                 metadata={
-                    "domain_id": episode_domain.id,
+                    "domain_id": -100,
                     "can_create": True,
-                    "create_type": "episode"
+                    "create_type": "sequence"
                 }
             )
-            header_id -= 1
             
-            # Get actual episodes
-            episodes = db.query(Episode).filter(
-                Episode.project_id == project_id,
-                Episode.is_active == True
-            ).order_by(Episode.code).all()
+            # Get actual sequences
+            sequences = db.query(Sequence).filter(
+                Sequence.project_id == project_id,
+                Sequence.is_active == True
+            ).order_by(Sequence.code).all()
             
-            for episode in episodes:
-                episode_node = HierarchyEntity(
-                    id=episode.id,
-                    type="episode",
-                    code=episode.code,
-                    name=episode.name,
-                    thumbnail_url=episode.thumbnail_url,
-                    description=episode.description,
+            for sequence in sequences:
+                sequence_node = HierarchyEntity(
+                    id=sequence.id,
+                    type="sequence",
+                    code=sequence.code,
+                    name=sequence.name,
+                    thumbnail_url=sequence.thumbnail_url,
+                    description=sequence.description,
                     children=[],
                     metadata={
-                        **HierarchyService._get_model_data(episode),
-                        "domain_id": episode_domain.id,
-                        "project_id": episode.project_id,
+                        **HierarchyService._get_model_data(sequence),
+                        "domain_id": -100,
+                        "project_id": sequence.project_id,
                         "project_code": project_code,
                         "project_name": project_name,
                         "can_create": True,
-                        "create_type": "sequence"
+                        "create_type": "shot"
                     }
                 )
                 
-                # Get sequences for this episode
-                sequences = db.query(Sequence).filter(
-                    Sequence.episode_id == episode.id,
-                    Sequence.is_active == True
-                ).order_by(Sequence.code).all()
+                # Get shots for this sequence
+                shots = db.query(Shot).filter(
+                    Shot.sequence_id == sequence.id,
+                    Shot.is_active == True
+                ).order_by(Shot.code).all()
                 
-                for sequence in sequences:
-                    sequence_node = HierarchyEntity(
-                        id=sequence.id,
-                        type="sequence",
-                        code=sequence.code,
-                        name=sequence.name,
-                        thumbnail_url=sequence.thumbnail_url,
-                        description=sequence.description,
+                for shot in shots:
+                    shot_node = HierarchyEntity(
+                        id=shot.id,
+                        type="shot",
+                        domain_type="shot",
+                        code=shot.code,
+                        name=shot.name,
+                        thumbnail_url=shot.thumbnail_url,
+                        description=shot.description,
                         children=[],
                         metadata={
-                            **HierarchyService._get_model_data(sequence),
-                            "domain_id": episode_domain.id,
-                            "project_id": sequence.project_id,
+                            **HierarchyService._get_model_data(shot),
+                            "domain_id": -100,
+                            "domain_name": "Sequences",
+                            "project_id": shot.project_id,
                             "project_code": project_code,
                             "project_name": project_name,
-                            "episode_id": sequence.episode_id,
-                            "episode_code": episode.code,
-                            "episode_name": episode.name,
+                            "episode_id": None,
+                            "episode_code": None,
+                            "episode_name": None,
+                            "sequence_id": shot.sequence_id,
+                            "sequence_code": sequence.code,
+                            "sequence_name": sequence.name,
                             "can_create": True,
-                            "create_type": "shot"
+                            "create_type": "task"
                         }
                     )
-                    
-                    # Get shots for this sequence
-                    shots = db.query(Shot).filter(
-                        Shot.sequence_id == sequence.id,
-                        Shot.is_active == True
-                    ).order_by(Shot.code).all()
-                    
-                    for shot in shots:
-                        shot_node = HierarchyEntity(
-                            id=shot.id,
-                            type="shot",
-                            domain_type="shot",
-                            code=shot.code,
-                            name=shot.name,
-                            thumbnail_url=shot.thumbnail_url,
-                            description=shot.description,
+                    hierarchy.shot_count += 1
+
+                    # Get tasks for this shot
+                    tasks = db.query(Task).filter(
+                        Task.shot_id == shot.id,
+                        Task.project_id == project_id,
+                        Task.is_active == True
+                    ).order_by(Task.code).all()
+
+                    for task in tasks:
+                        task_node = HierarchyEntity(
+                            id=task.id,
+                            type="task",
+                            domain_type="task",
+                            code=task.code,
+                            name=task.name,
+                            thumbnail_url=task.thumbnail_url,
+                            description=task.description,
                             children=[],
                             metadata={
-                                **HierarchyService._get_model_data(shot),
-                                "domain_id": episode_domain.id,
-                                "domain_name": "Episodes",
-                                "project_id": shot.project_id,
+                                **HierarchyService._get_model_data(task),
+                                "domain_id": -100,
+                                "domain_name": "Sequences",
+                                "project_id": task.project_id,
                                 "project_code": project_code,
                                 "project_name": project_name,
-                                "episode_id": episode.id,
-                                "episode_code": episode.code,
-                                "episode_name": episode.name,
-                                "sequence_id": shot.sequence_id,
+                                "episode_id": None,
+                                "episode_code": None,
+                                "episode_name": None,
+                                "sequence_id": sequence.id,
                                 "sequence_code": sequence.code,
                                 "sequence_name": sequence.name,
+                                "shot_id": task.shot_id,
+                                "shot_code": shot.code,
+                                "shot_name": shot.name,
+                                "category_id": task.category_id,
                                 "can_create": True,
-                                "create_type": "task"
+                                "create_type": "publish"
                             }
                         )
-                        hierarchy.shot_count += 1
 
-                        # Get tasks for this shot
-                        tasks = db.query(Task).filter(
-                            Task.shot_id == shot.id,
-                            Task.project_id == project_id,
-                            Task.is_active == True
-                        ).order_by(Task.code).all()
+                        publish_types = db.query(PublishType).filter(
+                            PublishType.project_id == task.project_id,
+                            PublishType.task_id == task.id
+                        ).all()
 
-                        for task in tasks:
-                            task_node = HierarchyEntity(
-                                id=task.id,
-                                type="task",
-                                domain_type="task",
-                                code=task.code,
-                                name=task.name,
-                                thumbnail_url=task.thumbnail_url,
-                                description=task.description,
-                                children=[],
+                        for publish_type in publish_types:
+                            pub_versions = db.query(Version).filter(
+                                Version.publish_id == publish_type.id,
+                                Version.is_active == True
+                            ).order_by(Version.code).all()
+                            version_nodes = []
+                            for ver in pub_versions:
+                                version_nodes.append(HierarchyEntity(
+                                    id=ver.id,
+                                    type="version",
+                                    domain_type="version",
+                                    code=ver.code,
+                                    name=ver.name,
+                                    description=ver.description,
+                                    children=[],
+                                    metadata={
+                                        **HierarchyService._get_model_data(ver),
+                                        "domain_id": -100,
+                                        "project_id": task.project_id,
+                                        "project_code": project_code,
+                                        "episode_id": None,
+                                        "episode_code": None,
+                                        "sequence_id": sequence.id,
+                                        "sequence_code": sequence.code,
+                                        "shot_id": task.shot_id,
+                                        "shot_code": shot.code,
+                                        "task_id": task.id,
+                                        "task_code": task.code,
+                                        "publish_id": publish_type.id,
+                                        "publish_code": publish_type.code,
+                                    }
+                                ))
+
+                            publish_type_node = HierarchyEntity(
+                                id=publish_type.id,
+                                type="publish",
+                                domain_type="publish",
+                                code=publish_type.code,
+                                name=publish_type.name,
+                                description=publish_type.description,
+                                children=version_nodes,
                                 metadata={
-                                    **HierarchyService._get_model_data(task),
-                                    "domain_id": episode_domain.id,
-                                    "domain_name": "Episodes",
+                                    **HierarchyService._get_model_data(publish_type),
+                                    "domain_id": -100,
+                                    "domain_name": "Sequences",
                                     "project_id": task.project_id,
                                     "project_code": project_code,
                                     "project_name": project_name,
-                                    "episode_id": episode.id,
-                                    "episode_code": episode.code,
-                                    "episode_name": episode.name,
+                                    "episode_id": None,
+                                    "episode_code": None,
+                                    "episode_name": None,
                                     "sequence_id": sequence.id,
                                     "sequence_code": sequence.code,
                                     "sequence_name": sequence.name,
                                     "shot_id": task.shot_id,
                                     "shot_code": shot.code,
                                     "shot_name": shot.name,
-                                    "category_id": task.category_id,
+                                    "task_id": task.id,
+                                    "task_code": task.code,
+                                    "task_name": task.name,
                                     "can_create": True,
-                                    "create_type": "publish"
+                                    "create_type": "version",
                                 }
                             )
+                            task_node.children.append(publish_type_node)
 
-                            publish_types = db.query(PublishType).filter(
-                                PublishType.project_id == task.project_id,
-                                PublishType.task_id == task.id
-                            ).all()
+                        shot_node.children.append(task_node)
+                    
+                    sequence_node.children.append(shot_node)
+                
+                hierarchy.sequence_count += 1
+                sequences_header.children.append(sequence_node)
+            
+            hierarchy.children.append(sequences_header)
+        else:
+            # ==================== EPISODES SECTION ====================
+            episode_domain = domain_map.get('episode')
+            if episode_domain:
+                episodes_header = HierarchyEntity(
+                    id=episode_domain.id,
+                    type="domain",
+                    domain_type='episode',
+                    code="EPISODES",
+                    name="Episodes",
+                    description="All episodes in this project",
+                    children=[],
+                    metadata={
+                        "domain_id": episode_domain.id,
+                        "can_create": True,
+                        "create_type": "episode"
+                    }
+                )
+                header_id -= 1
+                
+                # Get actual episodes
+                episodes = db.query(Episode).filter(
+                    Episode.project_id == project_id,
+                    Episode.is_active == True
+                ).order_by(Episode.code).all()
+                
+                for episode in episodes:
+                    episode_node = HierarchyEntity(
+                        id=episode.id,
+                        type="episode",
+                        code=episode.code,
+                        name=episode.name,
+                        thumbnail_url=episode.thumbnail_url,
+                        description=episode.description,
+                        children=[],
+                        metadata={
+                            **HierarchyService._get_model_data(episode),
+                            "domain_id": episode_domain.id,
+                            "project_id": episode.project_id,
+                            "project_code": project_code,
+                            "project_name": project_name,
+                            "can_create": True,
+                            "create_type": "sequence"
+                        }
+                    )
+                    
+                    # Get sequences for this episode
+                    sequences = db.query(Sequence).filter(
+                        Sequence.episode_id == episode.id,
+                        Sequence.is_active == True
+                    ).order_by(Sequence.code).all()
+                    
+                    for sequence in sequences:
+                        sequence_node = HierarchyEntity(
+                            id=sequence.id,
+                            type="sequence",
+                            code=sequence.code,
+                            name=sequence.name,
+                            thumbnail_url=sequence.thumbnail_url,
+                            description=sequence.description,
+                            children=[],
+                            metadata={
+                                **HierarchyService._get_model_data(sequence),
+                                "domain_id": episode_domain.id,
+                                "project_id": sequence.project_id,
+                                "project_code": project_code,
+                                "project_name": project_name,
+                                "episode_id": sequence.episode_id,
+                                "episode_code": episode.code,
+                                "episode_name": episode.name,
+                                "can_create": True,
+                                "create_type": "shot"
+                            }
+                        )
+                        
+                        # Get shots for this sequence
+                        shots = db.query(Shot).filter(
+                            Shot.sequence_id == sequence.id,
+                            Shot.is_active == True
+                        ).order_by(Shot.code).all()
+                        
+                        for shot in shots:
+                            shot_node = HierarchyEntity(
+                                id=shot.id,
+                                type="shot",
+                                domain_type="shot",
+                                code=shot.code,
+                                name=shot.name,
+                                thumbnail_url=shot.thumbnail_url,
+                                description=shot.description,
+                                children=[],
+                                metadata={
+                                    **HierarchyService._get_model_data(shot),
+                                    "domain_id": episode_domain.id,
+                                    "domain_name": "Episodes",
+                                    "project_id": shot.project_id,
+                                    "project_code": project_code,
+                                    "project_name": project_name,
+                                    "episode_id": episode.id,
+                                    "episode_code": episode.code,
+                                    "episode_name": episode.name,
+                                    "sequence_id": shot.sequence_id,
+                                    "sequence_code": sequence.code,
+                                    "sequence_name": sequence.name,
+                                    "can_create": True,
+                                    "create_type": "task"
+                                }
+                            )
+                            hierarchy.shot_count += 1
 
-                            for publish_type in publish_types:
-                                publish_type_node = HierarchyEntity(
-                                    id=publish_type.id,
-                                    type="version",
-                                    domain_type="publish",
-                                    code=publish_type.code,
-                                    name=publish_type.name,
-                                    description=publish_type.description,
+                            # Get tasks for this shot
+                            tasks = db.query(Task).filter(
+                                Task.shot_id == shot.id,
+                                Task.project_id == project_id,
+                                Task.is_active == True
+                            ).order_by(Task.code).all()
+
+                            for task in tasks:
+                                task_node = HierarchyEntity(
+                                    id=task.id,
+                                    type="task",
+                                    domain_type="task",
+                                    code=task.code,
+                                    name=task.name,
+                                    thumbnail_url=task.thumbnail_url,
+                                    description=task.description,
                                     children=[],
                                     metadata={
+                                        **HierarchyService._get_model_data(task),
                                         "domain_id": episode_domain.id,
                                         "domain_name": "Episodes",
                                         "project_id": task.project_id,
@@ -270,24 +437,94 @@ class HierarchyService:
                                         "shot_id": task.shot_id,
                                         "shot_code": shot.code,
                                         "shot_name": shot.name,
-                                        "task_id": task.id,
-                                        "task_code": task.code,
-                                        "task_name": task.name,
+                                        "category_id": task.category_id,
+                                        "can_create": True,
+                                        "create_type": "publish"
                                     }
                                 )
-                                task_node.children.append(publish_type_node)
 
-                            shot_node.children.append(task_node)
+                                publish_types = db.query(PublishType).filter(
+                                    PublishType.project_id == task.project_id,
+                                    PublishType.task_id == task.id
+                                ).all()
+
+                                for publish_type in publish_types:
+                                    pub_versions = db.query(Version).filter(
+                                        Version.publish_id == publish_type.id,
+                                        Version.is_active == True
+                                    ).order_by(Version.code).all()
+                                    version_nodes = []
+                                    for ver in pub_versions:
+                                        version_nodes.append(HierarchyEntity(
+                                            id=ver.id,
+                                            type="version",
+                                            domain_type="version",
+                                            code=ver.code,
+                                            name=ver.name,
+                                            description=ver.description,
+                                            children=[],
+                                            metadata={
+                                                **HierarchyService._get_model_data(ver),
+                                                "domain_id": episode_domain.id,
+                                                "project_id": task.project_id,
+                                                "project_code": project_code,
+                                                "episode_id": episode.id,
+                                                "episode_code": episode.code,
+                                                "sequence_id": sequence.id,
+                                                "sequence_code": sequence.code,
+                                                "shot_id": task.shot_id,
+                                                "shot_code": shot.code,
+                                                "task_id": task.id,
+                                                "task_code": task.code,
+                                                "publish_id": publish_type.id,
+                                                "publish_code": publish_type.code,
+                                            }
+                                        ))
+
+                                    publish_type_node = HierarchyEntity(
+                                        id=publish_type.id,
+                                        type="publish",
+                                        domain_type="publish",
+                                        code=publish_type.code,
+                                        name=publish_type.name,
+                                        description=publish_type.description,
+                                        children=version_nodes,
+                                        metadata={
+                                            **HierarchyService._get_model_data(publish_type),
+                                            "domain_id": episode_domain.id,
+                                            "domain_name": "Episodes",
+                                            "project_id": task.project_id,
+                                            "project_code": project_code,
+                                            "project_name": project_name,
+                                            "episode_id": episode.id,
+                                            "episode_code": episode.code,
+                                            "episode_name": episode.name,
+                                            "sequence_id": sequence.id,
+                                            "sequence_code": sequence.code,
+                                            "sequence_name": sequence.name,
+                                            "shot_id": task.shot_id,
+                                            "shot_code": shot.code,
+                                            "shot_name": shot.name,
+                                            "task_id": task.id,
+                                            "task_code": task.code,
+                                            "task_name": task.name,
+                                            "can_create": True,
+                                            "create_type": "version",
+                                        }
+                                    )
+                                    task_node.children.append(publish_type_node)
+
+                                shot_node.children.append(task_node)
+                            
+                            sequence_node.children.append(shot_node)
                         
-                        sequence_node.children.append(shot_node)
+                        hierarchy.sequence_count += 1
+                        episode_node.children.append(sequence_node)
                     
-                    hierarchy.sequence_count += 1
-                    episode_node.children.append(sequence_node)
+                    episodes_header.children.append(episode_node)
+                    hierarchy.episode_count += 1
                 
-                episodes_header.children.append(episode_node)
-                hierarchy.episode_count += 1
-            
-            hierarchy.children.append(episodes_header)
+                hierarchy.children.append(episodes_header)
         # ==================== ASSETS SECTION ====================
         asset_domain = domain_map.get('asset')
         if asset_domain:
@@ -527,42 +764,339 @@ class HierarchyService:
         # ==================== EDITORIALS SECTION ====================
         editorial_domain = domain_map.get('editorial')
         if editorial_domain:
-            editorials_header = HierarchyEntity(
-                id=editorial_domain.id,
-                type="domain",
-                domain_type='editorial',
-                code="EDITORIALS",
-                name="Editorials",
-                description="All editorials in this project",
-                children=[],
-                metadata={
-                    "domain_id": editorial_domain.id,
-                    "project_id": project_id,
-                    "project_code": project_code,
-                    "project_name": project_name,
-                    "can_create": True,
-                    "create_type": "episode"
-                }
-            )
-            header_id -= 1
+            has_episode = project.template.has_episode if project.template else True
             
-            episodes = db.query(Episode).filter(
-                Episode.project_id == project_id,
-                Episode.is_active == True
-            ).order_by(Episode.code).all()
-            
-            for episode in episodes:
-                episode_node = HierarchyEntity(
-                    id=episode.id,
-                    type="episode",
-                    code=episode.code,
-                    name=episode.name,
-                    thumbnail_url=episode.thumbnail_url,
-                    description=episode.description,
+            if has_episode:
+                editorials_header = HierarchyEntity(
+                    id=editorial_domain.id,
+                    type="domain",
+                    domain_type='editorial',
+                    code="EDITORIALS",
+                    name="Editorials",
+                    description="All editorials in this project",
                     children=[],
                     metadata={
                         "domain_id": editorial_domain.id,
-                        "project_id": episode.project_id,
+                        "project_id": project_id,
+                        "project_code": project_code,
+                        "project_name": project_name,
+                        "can_create": True,
+                        "create_type": "episode"
+                    }
+                )
+                header_id -= 1
+                
+                episodes = db.query(Episode).filter(
+                    Episode.project_id == project_id,
+                    Episode.is_active == True
+                ).order_by(Episode.code).all()
+                
+                for episode in episodes:
+                    episode_node = HierarchyEntity(
+                        id=episode.id,
+                        type="episode",
+                        code=episode.code,
+                        name=episode.name,
+                        thumbnail_url=episode.thumbnail_url,
+                        description=episode.description,
+                        children=[],
+                        metadata={
+                            "domain_id": editorial_domain.id,
+                            "domain_type": "editorial",
+                            "project_id": episode.project_id,
+                            "project_code": project_code,
+                            "project_name": project_name,
+                            "can_create": True,
+                            "create_type": "sequence"
+                        }
+                    )
+                    
+                    # Get sequences for this episode
+                    sequences = db.query(Sequence).filter(
+                        Sequence.episode_id == episode.id,
+                        Sequence.is_active == True
+                    ).order_by(Sequence.code).all()
+                    
+                    for sequence in sequences:
+                        sequence_node = HierarchyEntity(
+                            id=sequence.id,
+                            type="sequence",
+                            domain_type="editorial",
+                            code=sequence.code,
+                            name=sequence.name,
+                            thumbnail_url=sequence.thumbnail_url,
+                            description=sequence.description,
+                            children=[],
+                            metadata={
+                                **HierarchyService._get_model_data(sequence),
+                                "domain_id": editorial_domain.id,
+                                "domain_type": "editorial",
+                                "domain_name": "Editorials",
+                                "project_id": sequence.project_id,
+                                "project_code": project_code,
+                                "project_name": project_name,
+                                "episode_id": sequence.episode_id,
+                                "episode_code": episode.code,
+                                "episode_name": episode.name,
+                                "can_create": True,
+                                "create_type": "shot"
+                            }
+                        )
+                        
+                        # Get shots under sequence for this episode (editorial sequence has shots too)
+                        shots = db.query(Shot).filter(
+                            Shot.sequence_id == sequence.id,
+                            Shot.project_id == project_id,
+                            Shot.is_active == True
+                        ).order_by(Shot.code).all()
+                        
+                        for shot in shots:
+                            shot_node = HierarchyEntity(
+                                id=shot.id,
+                                type="shot",
+                                domain_type="shot",
+                                code=shot.code,
+                                name=shot.name,
+                                thumbnail_url=shot.thumbnail_url,
+                                description=shot.description,
+                                children=[],
+                                metadata={
+                                    "project_id": shot.project_id,
+                                    "project_code": project_code,
+                                    "project_name": project_name,
+                                    "domain_id": editorial_domain.id,
+                                    "domain_type": "editorial",
+                                    "domain_name": "Editorials",
+                                    "episode_id": episode.id,
+                                    "episode_code": episode.code,
+                                    "episode_name": episode.name,
+                                    "sequence_id": sequence.id,
+                                    "sequence_code": sequence.code,
+                                    "sequence_name": sequence.name,
+                                    "can_create": True,
+                                    "create_type": "task"
+                                }
+                            )
+                            
+                            # Get tasks under this shot (editorial tasks only)
+                            tasks = db.query(Task).filter(
+                                Task.shot_id == shot.id,
+                                Task.project_id == project_id,
+                                Task.is_active == True
+                            ).order_by(Task.code).all()
+                            
+                            for task in tasks:
+                                task_node = HierarchyEntity(
+                                    id=task.id,
+                                    type="task",
+                                    domain_type="task",
+                                    code=task.code,
+                                    name=task.name,
+                                    thumbnail_url=task.thumbnail_url,
+                                    description=task.description,
+                                    children=[],
+                                    metadata={
+                                        "domain_id": editorial_domain.id,
+                                        "domain_name": "Editorials",
+                                        "project_id": task.project_id,
+                                        "episode_id": episode.id,
+                                        "episode_code": episode.code,
+                                        "sequence_id": sequence.id,
+                                        "sequence_code": sequence.code,
+                                        "shot_id": shot.id,
+                                        "shot_code": shot.code,
+                                        "can_create": True,
+                                        "create_type": "publish"
+                                    }
+                                )
+                                
+                                # Get publishes/versions for this task
+                                publish_types = db.query(PublishType).filter(
+                                    PublishType.project_id == task.project_id,
+                                    PublishType.task_id == task.id
+                                ).all()
+                                
+                                for publish_type in publish_types:
+                                    pub_versions = db.query(Version).filter(
+                                        Version.publish_id == publish_type.id,
+                                        Version.is_active == True
+                                    ).order_by(Version.code).all()
+                                    
+                                    version_nodes = []
+                                    for ver in pub_versions:
+                                        version_nodes.append(HierarchyEntity(
+                                            id=ver.id,
+                                            type="version",
+                                            domain_type="version",
+                                            code=ver.code,
+                                            name=ver.name,
+                                            description=ver.description,
+                                            children=[],
+                                            metadata={
+                                                **HierarchyService._get_model_data(ver),
+                                                "domain_id": editorial_domain.id,
+                                                "project_id": task.project_id,
+                                                "project_code": project_code,
+                                                "episode_id": episode.id,
+                                                "episode_code": episode.code,
+                                                "sequence_id": sequence.id,
+                                                "sequence_code": sequence.code,
+                                                "task_id": task.id,
+                                                "task_code": task.code,
+                                                "publish_id": publish_type.id,
+                                                "publish_code": publish_type.code,
+                                            }
+                                        ))
+                                        
+                                    publish_type_node = HierarchyEntity(
+                                        id=publish_type.id,
+                                        type="publish",
+                                        domain_type="publish",
+                                        code=publish_type.code,
+                                        name=publish_type.name,
+                                        description=publish_type.description,
+                                        children=version_nodes,
+                                        metadata={
+                                            **HierarchyService._get_model_data(publish_type),
+                                            "domain_id": editorial_domain.id,
+                                            "domain_name": "Editorials",
+                                            "project_id": task.project_id,
+                                            "project_code": project_code,
+                                            "project_name": project_name,
+                                            "episode_id": episode.id,
+                                            "episode_code": episode.code,
+                                            "episode_name": episode.name,
+                                            "sequence_id": sequence.id,
+                                            "sequence_code": sequence.code,
+                                            "sequence_name": sequence.name,
+                                            "task_id": task.id,
+                                            "task_code": task.code,
+                                            "task_name": task.name,
+                                            "can_create": True,
+                                            "create_type": "version",
+                                        }
+                                    )
+                                    task_node.children.append(publish_type_node)
+                                    
+                                shot_node.children.append(task_node)
+                            sequence_node.children.append(shot_node)
+                            
+                        # Also support direct sequence editorial tasks if any legacy tasks exist
+                        legacy_tasks = db.query(Task).filter(
+                            Task.episode_id == episode.id,
+                            Task.sequence_id == sequence.id,
+                            Task.project_id == project_id,
+                            Task.shot_id == None,
+                            Task.is_active == True
+                        ).order_by(Task.code).all()
+                        for task in legacy_tasks:
+                            task_node = HierarchyEntity(
+                                id=task.id,
+                                type="task",
+                                domain_type="task",
+                                code=task.code,
+                                name=task.name,
+                                thumbnail_url=task.thumbnail_url,
+                                description=task.description,
+                                children=[],
+                                metadata={
+                                    "domain_id": editorial_domain.id,
+                                    "domain_name": "Editorials",
+                                    "project_id": task.project_id,
+                                    "episode_id": episode.id,
+                                    "episode_code": episode.code,
+                                    "sequence_id": sequence.id,
+                                    "sequence_code": sequence.code,
+                                    "shot_id": None,
+                                    "can_create": True,
+                                    "create_type": "publish"
+                                }
+                            )
+                            # Get publishes/versions for this legacy task
+                            publish_types = db.query(PublishType).filter(
+                                PublishType.project_id == task.project_id,
+                                PublishType.task_id == task.id
+                            ).all()
+                            for publish_type in publish_types:
+                                pub_versions = db.query(Version).filter(
+                                    Version.publish_id == publish_type.id,
+                                    Version.is_active == True
+                                ).order_by(Version.code).all()
+                                version_nodes = []
+                                for ver in pub_versions:
+                                    version_nodes.append(HierarchyEntity(
+                                        id=ver.id,
+                                        type="version",
+                                        domain_type="version",
+                                        code=ver.code,
+                                        name=ver.name,
+                                        description=ver.description,
+                                        children=[],
+                                        metadata={
+                                            **HierarchyService._get_model_data(ver),
+                                            "domain_id": editorial_domain.id,
+                                            "project_id": task.project_id,
+                                            "project_code": project_code,
+                                            "episode_id": episode.id,
+                                            "episode_code": episode.code,
+                                            "sequence_id": sequence.id,
+                                            "sequence_code": sequence.code,
+                                            "task_id": task.id,
+                                            "task_code": task.code,
+                                            "publish_id": publish_type.id,
+                                            "publish_code": publish_type.code,
+                                        }
+                                    ))
+                                publish_type_node = HierarchyEntity(
+                                    id=publish_type.id,
+                                    type="publish",
+                                    domain_type="publish",
+                                    code=publish_type.code,
+                                    name=publish_type.name,
+                                    description=publish_type.description,
+                                    children=version_nodes,
+                                    metadata={
+                                        **HierarchyService._get_model_data(publish_type),
+                                        "domain_id": editorial_domain.id,
+                                        "domain_name": "Editorials",
+                                        "project_id": task.project_id,
+                                        "project_code": project_code,
+                                        "project_name": project_name,
+                                        "episode_id": episode.id,
+                                        "episode_code": episode.code,
+                                        "episode_name": episode.name,
+                                        "sequence_id": sequence.id,
+                                        "sequence_code": sequence.code,
+                                        "sequence_name": sequence.name,
+                                        "task_id": task.id,
+                                        "task_code": task.code,
+                                        "task_name": task.name,
+                                        "can_create": True,
+                                        "create_type": "version",
+                                    }
+                                )
+                                task_node.children.append(publish_type_node)
+                            sequence_node.children.append(task_node)
+                            
+                        episode_node.children.append(sequence_node)
+                        
+                    editorials_header.children.append(episode_node)
+                    
+                hierarchy.children.append(editorials_header)
+            else:
+                # Non-episodic project: Editorials -> Sequence -> Task -> Publish -> Version
+                editorials_header = HierarchyEntity(
+                    id=editorial_domain.id,
+                    type="domain",
+                    domain_type='editorial',
+                    code="EDITORIALS",
+                    name="Editorials",
+                    description="All editorials in this project",
+                    children=[],
+                    metadata={
+                        "domain_id": editorial_domain.id,
+                        "domain_type": "editorial",
+                        "project_id": project_id,
                         "project_code": project_code,
                         "project_name": project_name,
                         "can_create": True,
@@ -570,9 +1104,9 @@ class HierarchyService:
                     }
                 )
                 
-                # Get sequences for this episode
+                # Query all sequences directly under the project
                 sequences = db.query(Sequence).filter(
-                    Sequence.episode_id == episode.id,
+                    Sequence.project_id == project_id,
                     Sequence.is_active == True
                 ).order_by(Sequence.code).all()
                 
@@ -580,6 +1114,7 @@ class HierarchyService:
                     sequence_node = HierarchyEntity(
                         id=sequence.id,
                         type="sequence",
+                        domain_type="editorial",
                         code=sequence.code,
                         name=sequence.name,
                         thumbnail_url=sequence.thumbnail_url,
@@ -588,92 +1123,253 @@ class HierarchyService:
                         metadata={
                             **HierarchyService._get_model_data(sequence),
                             "domain_id": editorial_domain.id,
+                            "domain_type": "editorial",
                             "domain_name": "Editorials",
                             "project_id": sequence.project_id,
                             "project_code": project_code,
                             "project_name": project_name,
-                            "episode_id": sequence.episode_id,
-                            "episode_code": episode.code,
-                            "episode_name": episode.name,
+                            "episode_id": None,
+                            "episode_code": None,
+                            "episode_name": None,
                             "can_create": True,
-                            "create_type": "task"
+                            "create_type": "shot"
                         }
                     )
                     
-
-                    # Get tasks for this shot (adjust model/field names as needed)
-                    tasks = db.query(Task).filter(
-                        Task.episode_id == episode.id,
+                    # Query shots under the sequence
+                    shots = db.query(Shot).filter(
+                        Shot.sequence_id == sequence.id,
+                        Shot.project_id == project_id,
+                        Shot.is_active == True
+                    ).order_by(Shot.code).all()
+                    
+                    for shot in shots:
+                        shot_node = HierarchyEntity(
+                            id=shot.id,
+                            type="shot",
+                            domain_type="shot",
+                            code=shot.code,
+                            name=shot.name,
+                            thumbnail_url=shot.thumbnail_url,
+                            description=shot.description,
+                            children=[],
+                            metadata={
+                                "project_id": shot.project_id,
+                                "project_code": project_code,
+                                "project_name": project_name,
+                                "domain_id": editorial_domain.id,
+                                "domain_type": "editorial",
+                                "domain_name": "Editorials",
+                                "episode_id": None,
+                                "episode_code": None,
+                                "episode_name": None,
+                                "sequence_id": sequence.id,
+                                "sequence_code": sequence.code,
+                                "sequence_name": sequence.name,
+                                "can_create": True,
+                                "create_type": "task"
+                            }
+                        )
+                        
+                        # Get tasks under this shot (editorial tasks only)
+                        tasks = db.query(Task).filter(
+                            Task.shot_id == shot.id,
+                            Task.project_id == project_id,
+                            Task.is_active == True
+                        ).order_by(Task.code).all()
+                        
+                        for task in tasks:
+                            task_node = HierarchyEntity(
+                                id=task.id,
+                                type="task",
+                                domain_type="task",
+                                code=task.code,
+                                name=task.name,
+                                thumbnail_url=task.thumbnail_url,
+                                description=task.description,
+                                children=[],
+                                metadata={
+                                    "domain_id": editorial_domain.id,
+                                    "domain_name": "Editorials",
+                                    "project_id": task.project_id,
+                                    "episode_id": None,
+                                    "episode_code": None,
+                                    "sequence_id": sequence.id,
+                                    "sequence_code": sequence.code,
+                                    "shot_id": shot.id,
+                                    "shot_code": shot.code,
+                                    "can_create": True,
+                                    "create_type": "publish"
+                                }
+                            )
+                            
+                            # Get publishes and versions for this task
+                            publish_types = db.query(PublishType).filter(
+                                PublishType.project_id == task.project_id,
+                                PublishType.task_id == task.id
+                            ).all()
+                            
+                            for publish_type in publish_types:
+                                pub_versions = db.query(Version).filter(
+                                    Version.publish_id == publish_type.id,
+                                    Version.is_active == True
+                                ).order_by(Version.code).all()
+                                
+                                version_nodes = []
+                                for ver in pub_versions:
+                                    version_nodes.append(HierarchyEntity(
+                                        id=ver.id,
+                                        type="version",
+                                        domain_type="version",
+                                        code=ver.code,
+                                        name=ver.name,
+                                        description=ver.description,
+                                        children=[],
+                                        metadata={
+                                            **HierarchyService._get_model_data(ver),
+                                            "domain_id": editorial_domain.id,
+                                            "project_id": task.project_id,
+                                            "project_code": project_code,
+                                            "episode_id": None,
+                                            "episode_code": None,
+                                            "sequence_id": sequence.id,
+                                            "sequence_code": sequence.code,
+                                            "task_id": task.id,
+                                            "task_code": task.code,
+                                            "publish_id": publish_type.id,
+                                            "publish_code": publish_type.code,
+                                        }
+                                    ))
+                                    
+                                publish_type_node = HierarchyEntity(
+                                    id=publish_type.id,
+                                    type="publish",
+                                    domain_type="publish",
+                                    code=publish_type.code,
+                                    name=publish_type.name,
+                                    description=publish_type.description,
+                                    children=version_nodes,
+                                    metadata={
+                                        **HierarchyService._get_model_data(publish_type),
+                                        "domain_id": editorial_domain.id,
+                                        "domain_name": "Editorials",
+                                        "project_id": task.project_id,
+                                        "project_code": project_code,
+                                        "project_name": project_name,
+                                        "episode_id": None,
+                                        "episode_code": None,
+                                        "episode_name": None,
+                                        "sequence_id": sequence.id,
+                                        "sequence_code": sequence.code,
+                                        "sequence_name": sequence.name,
+                                        "task_id": task.id,
+                                        "task_code": task.code,
+                                        "task_name": task.name,
+                                        "can_create": True,
+                                        "create_type": "version",
+                                    }
+                                )
+                                task_node.children.append(publish_type_node)
+                            shot_node.children.append(task_node)
+                        sequence_node.children.append(shot_node)
+                        
+                    # Also support direct sequence editorial tasks if any legacy tasks exist
+                    legacy_tasks = db.query(Task).filter(
                         Task.sequence_id == sequence.id,
                         Task.project_id == project_id,
+                        Task.shot_id == None,
                         Task.is_active == True
                     ).order_by(Task.code).all()
-
-                    for task in tasks:
+                    for task in legacy_tasks:
                         task_node = HierarchyEntity(
                             id=task.id,
                             type="task",
+                            domain_type="task",
                             code=task.code,
                             name=task.name,
                             thumbnail_url=task.thumbnail_url,
                             description=task.description,
                             children=[],
                             metadata={
-                                "domain_id": episode_domain.id,
+                                "domain_id": editorial_domain.id,
                                 "domain_name": "Editorials",
                                 "project_id": task.project_id,
-                                "episode_id": episode.id,
-                                "episode_code": episode.code,
+                                "episode_id": None,
+                                "episode_code": None,
                                 "sequence_id": sequence.id,
                                 "sequence_code": sequence.code,
-                                "shot_id": task.shot_id,
+                                "shot_id": None,
                                 "can_create": True,
                                 "create_type": "publish"
                             }
                         )
-
-                        # Get versions/publishes for this task (adjust model)
-                        # If you have a Version model linked to task:
+                        # Get publishes/versions for this legacy task
                         publish_types = db.query(PublishType).filter(
                             PublishType.project_id == task.project_id,
                             PublishType.task_id == task.id
                         ).all()
-
                         for publish_type in publish_types:
+                            pub_versions = db.query(Version).filter(
+                                Version.publish_id == publish_type.id,
+                                Version.is_active == True
+                            ).order_by(Version.code).all()
+                            version_nodes = []
+                            for ver in pub_versions:
+                                version_nodes.append(HierarchyEntity(
+                                    id=ver.id,
+                                    type="version",
+                                    domain_type="version",
+                                    code=ver.code,
+                                    name=ver.name,
+                                    description=ver.description,
+                                    children=[],
+                                    metadata={
+                                        **HierarchyService._get_model_data(ver),
+                                        "domain_id": editorial_domain.id,
+                                        "project_id": task.project_id,
+                                        "project_code": project_code,
+                                        "episode_id": None,
+                                        "episode_code": None,
+                                        "sequence_id": sequence.id,
+                                        "sequence_code": sequence.code,
+                                        "task_id": task.id,
+                                        "task_code": task.code,
+                                        "publish_id": publish_type.id,
+                                        "publish_code": publish_type.code,
+                                    }
+                                ))
                             publish_type_node = HierarchyEntity(
                                 id=publish_type.id,
-                                type="version",
+                                type="publish",
+                                domain_type="publish",
                                 code=publish_type.code,
                                 name=publish_type.name,
-                                # thumbnail_url=version.thumbnail_url,
                                 description=publish_type.description,
-                                children=[],
+                                children=version_nodes,
                                 metadata={
+                                    **HierarchyService._get_model_data(publish_type),
                                     "domain_id": editorial_domain.id,
                                     "domain_name": "Editorials",
                                     "project_id": task.project_id,
                                     "project_code": project_code,
                                     "project_name": project_name,
-                                    "episode_id": episode.id,
-                                    "episode_code": episode.code,
-                                    "episode_name": episode.name,
+                                    "episode_id": None,
+                                    "episode_code": None,
+                                    "episode_name": None,
                                     "sequence_id": sequence.id,
                                     "sequence_code": sequence.code,
                                     "sequence_name": sequence.name,
                                     "task_id": task.id,
                                     "task_code": task.code,
                                     "task_name": task.name,
+                                    "can_create": True,
+                                    "create_type": "version",
                                 }
                             )
                             task_node.children.append(publish_type_node)
-
-                        sequence_node.children.append(task_node)  
-
-                    episode_node.children.append(sequence_node)
-
-                editorials_header.children.append(episode_node)
-            
-            hierarchy.children.append(editorials_header)
+                        sequence_node.children.append(task_node)
+                    editorials_header.children.append(sequence_node)
+                hierarchy.children.append(editorials_header)
         
         # ==================== LIBRARIES SECTION ====================
         library_domain = domain_map.get('library')
@@ -775,7 +1471,8 @@ class HierarchyService:
         db: Session, 
         project_id: int, 
         entity_type: str, 
-        entity_id: int
+        entity_id: int,
+        domain_type: Optional[str] = None
     ) -> List[HierarchyEntity]:
         """Fetch direct children for a specific entity type for lazy loading."""
         children = []
@@ -783,6 +1480,10 @@ class HierarchyService:
         project = db.query(Project).filter(Project.id == project_id).first()
         project_code = project.code if project else "UNK"
         project_name = project.name if project else "Unknown Project"
+
+        is_feature_film = False
+        if project and project.template and (project.template.code == "featurefilm" or project.template.name == "Animation Feature Film"):
+            is_feature_film = True
 
         if entity_type == "project":
             # Project -> Domains
@@ -792,10 +1493,14 @@ class HierarchyService:
             ).all()
 
             for d in domains:
+                d_type = d.domain_type.value if hasattr(d.domain_type, 'value') else d.domain_type
+                if is_feature_film and d_type == 'episode':
+                    continue
+
                 children.append(HierarchyEntity(
                     id=d.id,
                     type="domain",
-                    domain_type=d.domain_type.value if hasattr(d.domain_type, 'value') else d.domain_type,
+                    domain_type=d_type,
                     code=d.code,
                     name=d.name,
                     thumbnail_url=d.thumbnail_url,
@@ -806,12 +1511,61 @@ class HierarchyService:
                         "project_code": project_code,
                         "domain_id": d.id,
                         "can_create": True,
-                        "create_type": "episode" if d.domain_type in ['episode', 'editorial'] else ("category" if d.domain_type == 'asset' else "library")
+                        "create_type": "episode" if d_type in ['episode', 'editorial'] else ("category" if d_type == 'asset' else "library")
+                    }
+                ))
+
+            if is_feature_film:
+                children.append(HierarchyEntity(
+                    id=-100,
+                    type="domain",
+                    domain_type='sequence',
+                    code="SEQUENCES",
+                    name="Sequences",
+                    thumbnail_url=None,
+                    description="All sequences in this project",
+                    children=[],
+                    metadata={
+                        "project_id": project_id,
+                        "project_code": project_code,
+                        "domain_id": -100,
+                        "can_create": True,
+                        "create_type": "sequence"
                     }
                 ))
 
         elif entity_type == "domain":
             # Domain -> Episodes, Categories, or Libraries
+            if is_feature_film and entity_id == -100:
+                sequences = db.query(Sequence).filter(
+                    Sequence.project_id == project_id,
+                    Sequence.is_active == True
+                ).order_by(Sequence.code).all()
+
+                for seq in sequences:
+                    children.append(HierarchyEntity(
+                        id=seq.id,
+                        type="sequence",
+                        code=seq.code,
+                        name=seq.name,
+                        thumbnail_url=seq.thumbnail_url,
+                        description=seq.description,
+                        children=[],
+                        metadata={
+                            "project_id": project_id,
+                            "project_code": project_code,
+                            "project_name": project_name,
+                            "domain_id": -100,
+                            "domain_name": "Sequences",
+                            "episode_id": None,
+                            "episode_code": None,
+                            "episode_name": None,
+                            "can_create": True,
+                            "create_type": "shot"
+                        }
+                    ))
+                return children
+
             domain = db.query(Domain).filter(Domain.id == entity_id).first()
             if not domain:
                 return []
@@ -819,8 +1573,37 @@ class HierarchyService:
             domain_type = domain.domain_type.value if hasattr(domain.domain_type, 'value') else domain.domain_type
 
             if domain_type in ["episode", "editorial"]:
+                has_episode = project.template.has_episode if project.template else True
+                if domain_type == "editorial" and not has_episode:
+                    # Non-episodic: load sequences directly under the editorial domain
+                    sequences = db.query(Sequence).filter(
+                        Sequence.project_id == project_id,
+                        Sequence.is_active == True
+                    ).order_by(Sequence.code).all()
+                    
+                    for seq in sequences:
+                        children.append(HierarchyEntity(
+                            id=seq.id,
+                            type="sequence",
+                            domain_type="editorial",
+                            code=seq.code,
+                            name=seq.name,
+                            thumbnail_url=seq.thumbnail_url,
+                            description=seq.description,
+                            children=[],
+                            metadata={
+                                "domain_id": entity_id,
+                                "domain_name": "Editorials",
+                                "domain_type": "editorial",
+                                "project_id": project_id,
+                                "can_create": True,
+                                "create_type": "shot"
+                            }
+                        ))
+                    return children
+
+                # Episodic projects (standard flow)
                 episodes = db.query(Episode).filter(
-                    Episode.domain_id == entity_id,
                     Episode.project_id == project_id,
                     Episode.is_active == True
                 ).order_by(Episode.code).all()
@@ -836,6 +1619,7 @@ class HierarchyService:
                         children=[],
                         metadata={
                             "domain_id": entity_id,
+                            "domain_type": domain_type,
                             "project_id": project_id,
                             "can_create": True,
                             "create_type": "sequence"
@@ -853,6 +1637,7 @@ class HierarchyService:
                         ep_node.children.append(HierarchyEntity(
                             id=seq.id,
                             type="sequence",
+                            domain_type=domain_type,
                             code=seq.code,
                             name=seq.name,
                             thumbnail_url=seq.thumbnail_url,
@@ -861,8 +1646,9 @@ class HierarchyService:
                             metadata={
                                 "project_id": project_id,
                                 "episode_id": ep.id,
+                                "domain_type": domain_type,
                                 "can_create": True,
-                                "create_type": "shot" if domain_type == "episode" else "task"
+                                "create_type": "shot"
                             }
                         ))
                     
@@ -919,7 +1705,20 @@ class HierarchyService:
         elif entity_type == "episode":
             # 1. Fetch parent episode to get domain_id
             episode = db.query(Episode).filter(Episode.id == entity_id).first()
-            domain_id = episode.domain_id if episode else None
+            
+            # Find the episode or editorial domain for this project
+            if domain_type:
+                domain = db.query(Domain).filter(
+                    Domain.project_id == project_id,
+                    Domain.domain_type == domain_type.lower()
+                ).first()
+            else:
+                domain = db.query(Domain).filter(
+                    Domain.project_id == project_id,
+                    Domain.domain_type.in_(['episode', 'editorial'])
+                ).first()
+            domain_id = domain.id if domain else None
+            resolved_dom_type = domain.domain_type.value if domain and hasattr(domain.domain_type, 'value') else (domain.domain_type if domain else 'episode')
 
             sequences = db.query(Sequence).filter(
                 Sequence.episode_id == entity_id,
@@ -931,6 +1730,7 @@ class HierarchyService:
                 children.append(HierarchyEntity(
                     id=seq.id,
                     type="sequence",
+                    domain_type=resolved_dom_type,
                     code=seq.code,
                     name=seq.name,
                     thumbnail_url=seq.thumbnail_url,
@@ -941,7 +1741,8 @@ class HierarchyService:
                         "project_code": project_code,
                         "project_name": project_name,
                         "domain_id": domain_id,
-                        "domain_name": "Episodes" if episode else None,
+                        "domain_type": resolved_dom_type,
+                        "domain_name": "Editorials" if resolved_dom_type == "editorial" else "Episodes",
                         "episode_id": seq.episode_id,
                         "episode_code": episode.code if episode else None,
                         "episode_name": episode.name if episode else None,
@@ -953,13 +1754,29 @@ class HierarchyService:
         elif entity_type == "sequence":
             # 1. Fetch sequence and its parent episode to get domain info
             sequence = db.query(Sequence).filter(Sequence.id == entity_id).first()
-            episode = db.query(Episode).filter(Episode.id == sequence.episode_id).first() if sequence else None
-            domain = db.query(Domain).filter(Domain.id == episode.domain_id).first() if episode else None
-            domain_type = domain.domain_type.value if domain and hasattr(domain.domain_type, 'value') else (domain.domain_type if domain else None)
-            domain_id = domain.id if domain else None
+            episode = db.query(Episode).filter(Episode.id == sequence.episode_id).first() if sequence and sequence.episode_id else None
+            if domain_type:
+                domain_type = domain_type.lower()
+                if domain_type == "editorials":
+                    domain_type = "editorial"
+                elif domain_type == "episodes":
+                    domain_type = "episode"
+                
+                domain = db.query(Domain).filter(
+                    Domain.project_id == project_id,
+                    Domain.domain_type == domain_type
+                ).first()
+                domain_id = domain.id if domain else None
+            else:
+                domain = db.query(Domain).filter(
+                    Domain.project_id == project_id,
+                    Domain.domain_type.in_(['episode', 'editorial'])
+                ).first() if sequence else None
+                domain_type = domain.domain_type.value if domain and hasattr(domain.domain_type, 'value') else (domain.domain_type if domain else None)
+                domain_id = domain.id if domain else None
 
-            # Always fetch shots if in Episode domain
-            if domain_type == 'episode':
+            # Fetch shots under sequence in Episode, Editorial or featurefilm (Sequence-root) domain
+            if domain_type in ['episode', 'editorial'] or is_feature_film:
                 shots = db.query(Shot).filter(
                     Shot.sequence_id == entity_id,
                     Shot.project_id == project_id,
@@ -967,6 +1784,11 @@ class HierarchyService:
                 ).order_by(Shot.code).all()
 
                 for shot in shots:
+                    # Determine virtual sequence header or correct domain
+                    is_seq_root = is_feature_film and domain_type != 'editorial'
+                    dom_id_to_use = -100 if is_seq_root else domain_id
+                    dom_name_to_use = "Sequences" if is_seq_root else ("Editorials" if domain_type == 'editorial' else "Episodes")
+
                     shot_node = HierarchyEntity(
                         id=shot.id,
                         type="shot",
@@ -980,11 +1802,11 @@ class HierarchyService:
                             "project_id": shot.project_id,
                             "project_code": project_code,
                             "project_name": project_name,
-                            "domain_id": domain_id,
-                            "domain_name": "Episodes",
-                            "episode_id": sequence.episode_id if sequence else None,
-                            "episode_code": episode.code if episode else None,
-                            "episode_name": episode.name if episode else None,
+                            "domain_id": dom_id_to_use,
+                            "domain_name": dom_name_to_use,
+                            "episode_id": None if is_seq_root else (sequence.episode_id if sequence else None),
+                            "episode_code": None if is_seq_root else (episode.code if episode else None),
+                            "episode_name": None if is_seq_root else (episode.name if episode else None),
                             "sequence_id": shot.sequence_id,
                             "sequence_code": sequence.code if sequence else None,
                             "sequence_name": sequence.name if sequence else None,
@@ -1014,11 +1836,11 @@ class HierarchyService:
                                 "project_id": task.project_id,
                                 "project_code": project_code,
                                 "project_name": project_name,
-                                "domain_id": domain_id,
-                                "domain_name": "Episodes",
-                                "episode_id": sequence.episode_id if sequence else None,
-                                "episode_code": episode.code if episode else None,
-                                "episode_name": episode.name if episode else None,
+                                "domain_id": dom_id_to_use,
+                                "domain_name": dom_name_to_use,
+                                "episode_id": None if is_seq_root else (sequence.episode_id if sequence else None),
+                                "episode_code": None if is_seq_root else (episode.code if episode else None),
+                                "episode_name": None if is_seq_root else (episode.name if episode else None),
                                 "sequence_id": sequence.id if sequence else None,
                                 "sequence_code": sequence.code if sequence else None,
                                 "sequence_name": sequence.name if sequence else None,
@@ -1032,11 +1854,12 @@ class HierarchyService:
                     
                     children.append(shot_node)
             
-            # Always fetch editorial tasks if in Editorial domain (or if no shots in Episode domain)
-            if domain_type == 'editorial' or (domain_type == 'episode' and not children):
+            # Fetch tasks if in Editorial domain, or if in episodic domain and we have no shots/children
+            if domain_type == 'editorial' or (not is_feature_film and domain_type == 'episode' and not children):
                 tasks = db.query(Task).filter(
                     Task.sequence_id == entity_id,
                     Task.project_id == project_id,
+                    Task.shot_id == None,  # Ensure it is editorial task (directly under sequence)
                     Task.is_active == True
                 ).order_by(Task.code).all()
                 
@@ -1071,7 +1894,11 @@ class HierarchyService:
             shot = db.query(Shot).filter(Shot.id == entity_id).first()
             sequence = db.query(Sequence).filter(Sequence.id == shot.sequence_id).first() if shot else None
             episode = db.query(Episode).filter(Episode.id == sequence.episode_id).first() if sequence else None
-            domain_id = episode.domain_id if episode else None
+            domain = db.query(Domain).filter(
+                Domain.project_id == project_id,
+                Domain.domain_type.in_(['episode', 'editorial'])
+            ).first() if shot else None
+            domain_id = domain.id if domain else None
 
             tasks = db.query(Task).filter(
                 Task.shot_id == entity_id,
@@ -1308,8 +2135,11 @@ class HierarchyService:
                 elif task.shot_id:
                     shot = db.query(Shot).filter(Shot.id == task.shot_id).first()
                     seq = db.query(Sequence).filter(Sequence.id == shot.sequence_id).first() if shot else None
-                    ep = db.query(Episode).filter(Episode.id == seq.episode_id).first() if seq else None
-                    if ep: domain_id = ep.domain_id
+                    domain = db.query(Domain).filter(
+                        Domain.project_id == project_id,
+                        Domain.domain_type.in_(['episode', 'editorial'])
+                    ).first()
+                    if domain: domain_id = domain.id
 
             # Fetch variants with reflection for asset tasks
             variants = HierarchyService._get_reflected_variants(db, project_id, asset_id, entity_id)
@@ -1425,14 +2255,43 @@ class HierarchyService:
                 ).all()
 
                 for pub in publishes:
+                    pub_versions = db.query(Version).filter(
+                        Version.publish_id == pub.id,
+                        Version.is_active == True
+                    ).order_by(Version.code).all()
+                    version_nodes = []
+                    for ver in pub_versions:
+                        version_nodes.append(HierarchyEntity(
+                            id=ver.id,
+                            type="version",
+                            domain_type="version",
+                            code=ver.code,
+                            name=ver.name,
+                            description=ver.description,
+                            children=[],
+                            metadata={
+                                **HierarchyService._get_model_data(ver),
+                                "project_id": project_id,
+                                "domain_id": domain_id,
+                                "task_id": entity_id,
+                                "task_code": task.code if task else None,
+                                "shot_id": task.shot_id if task else None,
+                                "shot_code": db.query(Shot).filter(Shot.id == task.shot_id).first().code if task and task.shot_id else None,
+                                "episode_id": task.episode_id if task else None,
+                                "sequence_id": task.sequence_id if task else None,
+                                "publish_id": pub.id,
+                                "publish_code": pub.code,
+                            }
+                        ))
+
                     children.append(HierarchyEntity(
                         id=pub.id,
-                        type="version",
+                        type="publish",
                         domain_type="publish",
                         code=pub.code,
                         name=pub.name,
                         description=pub.description,
-                        children=[],
+                        children=version_nodes,
                         metadata={
                             **HierarchyService._get_model_data(pub),
                             "project_id": project_id,
@@ -1448,6 +2307,10 @@ class HierarchyService:
                             "shot_id": task.shot_id if task else None,
                             "shot_code": db.query(Shot).filter(Shot.id == task.shot_id).first().code if task and task.shot_id else None,
                             "shot_name": db.query(Shot).filter(Shot.id == task.shot_id).first().name if task and task.shot_id else None,
+                            "episode_id": task.episode_id if task else None,
+                            "sequence_id": task.sequence_id if task else None,
+                            "can_create": True,
+                            "create_type": "version",
                         }
                     ))
 
@@ -1466,8 +2329,11 @@ class HierarchyService:
                 elif task.shot_id:
                     shot = db.query(Shot).filter(Shot.id == task.shot_id).first()
                     seq = db.query(Sequence).filter(Sequence.id == shot.sequence_id).first() if shot else None
-                    ep = db.query(Episode).filter(Episode.id == seq.episode_id).first() if seq else None
-                    if ep: domain_id = ep.domain_id
+                    domain = db.query(Domain).filter(
+                        Domain.project_id == project_id,
+                        Domain.domain_type.in_(['episode', 'editorial'])
+                    ).first()
+                    if domain: domain_id = domain.id
 
             publishes = HierarchyService._get_reflected_publishes(
                 db, project_id, variant.code if variant else None, task.asset_id if task else None, entity_id
@@ -1562,6 +2428,9 @@ class HierarchyService:
                         "asset_id": task.asset_id if task else None,
                         "publish_id": entity_id,
                         "publish_code": pub.code if pub else None,
+                        "episode_id": task.episode_id if task else None,
+                        "sequence_id": task.sequence_id if task else None,
+                        "shot_id": task.shot_id if task else None,
                     }
                 ))
 

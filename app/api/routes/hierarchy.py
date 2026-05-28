@@ -1,5 +1,5 @@
-from typing import List
-from fastapi import APIRouter, Depends, HTTPException
+from typing import List, Optional
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 from sqlalchemy import func
 
@@ -56,6 +56,7 @@ def get_entity_children(
     project_id: int,
     entity_type: str,
     entity_id: int,
+    domain_type: Optional[str] = Query(None),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
@@ -71,11 +72,12 @@ def get_entity_children(
             detail=f"Invalid entity type. Must be one of: {valid_types}"
         )
     
-    # Validate entity_id (Assuming you have this function defined elsewhere)
-    entity_id = validate_id(entity_id)
+    # Validate entity_id unless it is a virtual domain with negative ID
+    if not (entity_type == "domain" and entity_id < 0):
+        entity_id = validate_id(entity_id)
     
     # Call the new service method
-    children = hierarchy_service.get_entity_children(db, project_id, entity_type, entity_id)
+    children = hierarchy_service.get_entity_children(db, project_id, entity_type, entity_id, domain_type=domain_type)
     
     return children
 

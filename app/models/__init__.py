@@ -8,9 +8,12 @@ from app.models.library import Library
 from app.models.cycle import Cycle
 from app.models.shotset import Shotset
 from app.models.project import Project
+from app.models.permission import Permission
+from app.models.role import Role
 from app.models.template import Template
 from app.models.users import User
 from app.models.task import Task
+from app.models.task_template import TaskTemplate
 from app.models.version import Version
 from app.models.file import File
 
@@ -25,9 +28,12 @@ __all__ = [
     'Cycle',
     'Shotset',
     'Project',
+    'Permission',
+    'Role',
     'Template',
     'User',
     'Task',
+    'TaskTemplate',
     'Version',
     'File',
 ]

@@ -9,7 +9,7 @@ class EpisodeBase(BaseModel):
     description: Optional[str] = None
     project_id: int
     is_active: bool = True
-    domain_id:int
+    domain_id: Optional[int] = None
     thumbnail_url: Optional[str] = None
     
 

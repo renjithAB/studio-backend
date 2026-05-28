@@ -3,6 +3,8 @@
 -- =====================================================
 CREATE SEQUENCE IF NOT EXISTS users_id_seq START WITH 1000;
 CREATE SEQUENCE IF NOT EXISTS templates_id_seq START WITH 1000;
+CREATE SEQUENCE IF NOT EXISTS roles_id_seq START WITH 1000;
+CREATE SEQUENCE IF NOT EXISTS permissions_id_seq START WITH 1000;
 CREATE SEQUENCE IF NOT EXISTS projects_id_seq START WITH 1000;
 CREATE SEQUENCE IF NOT EXISTS domains_id_seq START WITH 1000;
 CREATE SEQUENCE IF NOT EXISTS categories_id_seq START WITH 100001;
@@ -17,6 +19,7 @@ CREATE SEQUENCE IF NOT EXISTS libraries_id_seq START WITH 100001;
 CREATE SEQUENCE IF NOT EXISTS cycles_id_seq START WITH 100001;
 CREATE SEQUENCE IF NOT EXISTS tasks_id_seq START WITH 100001;
 CREATE SEQUENCE IF NOT EXISTS versions_id_seq START WITH 100001;
+CREATE SEQUENCE IF NOT EXISTS version_code_seq START WITH 00001;
 CREATE SEQUENCE IF NOT EXISTS files_id_seq START WITH 100001;
 CREATE SEQUENCE IF NOT EXISTS publish_types_id_seq START WITH 100001;
 
@@ -80,12 +83,55 @@ CREATE TABLE templates (
     tag VARCHAR(64),
     is_active BOOLEAN NOT NULL DEFAULT TRUE,
 	has_episode BOOLEAN NOT NULL,
+    applicable_templates VARCHAR(512),
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ,
     created_by BIGINT,
     updated_by BIGINT,
     CONSTRAINT fk_templates_created_by FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE SET NULL,
     CONSTRAINT fk_templates_updated_by FOREIGN KEY (updated_by) REFERENCES users(id) ON DELETE SET NULL
+);
+
+-- =====================================================
+-- ROLES AND PERMISSIONS TABLES (Standard Decoupled)
+-- =====================================================
+CREATE TABLE IF NOT EXISTS public.roles (
+    id BIGINT PRIMARY KEY DEFAULT nextval('roles_id_seq'),
+    code VARCHAR(64) NOT NULL UNIQUE,
+    name VARCHAR(256) NOT NULL,
+    description VARCHAR(512),
+    is_active BOOLEAN NOT NULL DEFAULT TRUE,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ,
+    created_by BIGINT,
+    updated_by BIGINT
+);
+
+CREATE TABLE IF NOT EXISTS public.permissions (
+    id BIGINT PRIMARY KEY DEFAULT nextval('permissions_id_seq'),
+    code VARCHAR(64) NOT NULL UNIQUE,
+    name VARCHAR(256) NOT NULL,
+    description VARCHAR(512),
+    is_active BOOLEAN NOT NULL DEFAULT TRUE,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ,
+    created_by BIGINT,
+    updated_by BIGINT
+);
+
+CREATE TABLE IF NOT EXISTS public.role_permissions (
+    role_id BIGINT NOT NULL REFERENCES roles(id) ON DELETE CASCADE,
+    permission_id BIGINT NOT NULL REFERENCES permissions(id) ON DELETE CASCADE,
+    PRIMARY KEY (role_id, permission_id)
+);
+
+-- =====================================================
+-- TEMPLATE DOMAIN MAPPINGS TABLE (many-to-many relationship)
+-- =====================================================
+CREATE TABLE IF NOT EXISTS template_domain_mappings (
+    project_template_id BIGINT NOT NULL REFERENCES templates(id) ON DELETE CASCADE,
+    domain_template_id BIGINT NOT NULL REFERENCES templates(id) ON DELETE CASCADE,
+    PRIMARY KEY (project_template_id, domain_template_id)
 );
 
 -- =====================================================
@@ -446,7 +492,34 @@ CREATE TABLE shotsets (
 );
 
 
+CREATE TABLE IF NOT EXISTS public.publish_types
+(
+    id bigint NOT NULL DEFAULT nextval('publish_types_id_seq'::regclass),
+    project_id bigint,
+    name character varying(255) COLLATE pg_catalog."default",
+    description text COLLATE pg_catalog."default",
+    is_active boolean NOT NULL DEFAULT true,
+    created_at timestamp with time zone NOT NULL DEFAULT now(),
+    updated_at timestamp with time zone,
+    created_by bigint,
+    updated_by bigint,
+    code character varying(64) COLLATE pg_catalog."default",
+    thumbnail_url character varying(1024) COLLATE pg_catalog."default",
+    publish_type_code character varying(64) COLLATE pg_catalog."default",
+    variant_id bigint,
+    task_id bigint,
+    CONSTRAINT publish_types_pkey PRIMARY KEY (id),
+    CONSTRAINT publish_types_task_id_fkey FOREIGN KEY (task_id)
+        REFERENCES public.tasks (id) MATCH SIMPLE
+        ON UPDATE NO ACTION
+        ON DELETE NO ACTION,
+    CONSTRAINT publish_types_variant_id_fkey FOREIGN KEY (variant_id)
+        REFERENCES public.variants (id) MATCH SIMPLE
+        ON UPDATE NO ACTION
+        ON DELETE NO ACTION
+)
 
+TABLESPACE pg_default;
 
 
 
@@ -456,7 +529,7 @@ CREATE TABLE shotsets (
 -- =====================================================
 CREATE TABLE versions (
     id BIGINT PRIMARY KEY DEFAULT nextval('versions_id_seq'),
-    code VARCHAR(64),
+    code VARCHAR(64) DEFAULT lpad(nextval('version_code_seq')::text, 5, '0'),
     name VARCHAR(256),
     description VARCHAR(512),
     thumbnail_url VARCHAR(512),
@@ -588,8 +661,8 @@ CREATE INDEX idx_files_project ON files(project_id);
 -- ADD FOREIGN KEY CONSTRAINTS FOR ROLE/PERMISSION IN USERS
 -- =====================================================
 ALTER TABLE users 
-    ADD CONSTRAINT fk_users_role FOREIGN KEY (role_id) REFERENCES templates(id) ON DELETE SET NULL,
-    ADD CONSTRAINT fk_users_permission FOREIGN KEY (permission_id) REFERENCES templates(id) ON DELETE SET NULL;
+    ADD CONSTRAINT fk_users_role FOREIGN KEY (role_id) REFERENCES roles(id) ON DELETE SET NULL,
+    ADD CONSTRAINT fk_users_permission FOREIGN KEY (permission_id) REFERENCES permissions(id) ON DELETE SET NULL;
 
 	-- Table: public.publish_types
 
@@ -689,4 +762,212 @@ VALUES
     (1003, 'vfx', 'Visual Effects', 'Visual Effects template', 'vfx-template', NULL, true, NOW(), 1000, false),
     (1004, 'shortfilm', 'Short Film', 'Short film template', 'shortfilm-template', NULL, true, NOW(), 1000, false),
     (1005, 'trailer', 'Trailer', 'Trailer template', 'trailer-template', NULL, true, NOW(), 1000, false),
-    (1006, 'game', 'Game', 'Game template', 'game-template', NULL, true, NOW(), 1000, false);
+    (1006, 'game', 'Game', 'Game template', 'game-template', NULL, true, NOW(), 1000, false)
+ON CONFLICT (code) DO NOTHING;
+
+INSERT INTO templates (code, name, description, thumbnail_url, tag, is_active, created_at, created_by, has_episode)
+VALUES 
+    ('asset', 'Asset', 'Asset domain template', 'asset-thumbnail', 'domain', true, NOW(), 1000, false),
+    ('episode', 'Episode', 'Episode domain template', 'episode-thumbnail', 'domain', true, NOW(), 1000, false),
+    ('editorial', 'Editorial', 'Editorial domain template', 'editorial-thumbnail', 'domain', true, NOW(), 1000, false),
+    ('library', 'Library', 'Library domain template', 'library-thumbnail', 'domain', true, NOW(), 1000, false),
+    ('cycle', 'Cycle', 'Cycles domain template', 'cycle-thumbnail', 'domain', true, NOW(), 1000, false)
+ON CONFLICT (code) DO NOTHING;
+
+-- ============================================================
+-- CATEGORY TEMPLATES SEEDS
+-- ============================================================
+INSERT INTO templates (code, name, description, thumbnail_url, tag, is_active, created_at, created_by, has_episode)
+VALUES
+    ('camera', 'Camera', 'Domain camera category template', NULL, 'category', true, NOW(), 1000, false),
+    ('character', 'Character', 'Domain character category template', NULL, 'category', true, NOW(), 1000, false),
+    ('environment', 'Environment', 'Domain environment category template', NULL, 'category', true, NOW(), 1000, false),
+    ('fx', 'FX', 'Domain FX category template', NULL, 'category', true, NOW(), 1000, false),
+    ('light', 'Light', 'Domain light category template', NULL, 'category', true, NOW(), 1000, false),
+    ('prop', 'Prop', 'Domain prop category template', NULL, 'category', true, NOW(), 1000, false),
+    ('vehicle', 'Vehicle', 'Domain vehicle category template', NULL, 'category', true, NOW(), 1000, false),
+    ('weapon', 'Weapon', 'Domain weapon category template', NULL, 'category', true, NOW(), 1000, false)
+ON CONFLICT (code) DO NOTHING;
+
+-- Seed many-to-many template-domain mappings
+INSERT INTO template_domain_mappings (project_template_id, domain_template_id)
+VALUES
+    (1001, (SELECT id FROM templates WHERE code = 'asset')),
+    (1001, (SELECT id FROM templates WHERE code = 'editorial')),
+    (1001, (SELECT id FROM templates WHERE code = 'library')),
+    (1001, (SELECT id FROM templates WHERE code = 'cycle')),
+    
+    (1002, (SELECT id FROM templates WHERE code = 'asset')),
+    (1002, (SELECT id FROM templates WHERE code = 'episode')),
+    (1002, (SELECT id FROM templates WHERE code = 'editorial')),
+    (1002, (SELECT id FROM templates WHERE code = 'library')),
+    (1002, (SELECT id FROM templates WHERE code = 'cycle')),
+    
+    (1003, (SELECT id FROM templates WHERE code = 'asset')),
+    (1003, (SELECT id FROM templates WHERE code = 'editorial')),
+    (1003, (SELECT id FROM templates WHERE code = 'library')),
+    (1003, (SELECT id FROM templates WHERE code = 'cycle')),
+    
+    (1004, (SELECT id FROM templates WHERE code = 'asset')),
+    (1004, (SELECT id FROM templates WHERE code = 'editorial')),
+    (1004, (SELECT id FROM templates WHERE code = 'library')),
+    (1004, (SELECT id FROM templates WHERE code = 'cycle')),
+    
+    (1005, (SELECT id FROM templates WHERE code = 'asset')),
+    (1005, (SELECT id FROM templates WHERE code = 'editorial')),
+    (1005, (SELECT id FROM templates WHERE code = 'library')),
+    (1005, (SELECT id FROM templates WHERE code = 'cycle')),
+    
+    (1006, (SELECT id FROM templates WHERE code = 'asset')),
+    (1006, (SELECT id FROM templates WHERE code = 'editorial')),
+    (1006, (SELECT id FROM templates WHERE code = 'library')),
+    (1006, (SELECT id FROM templates WHERE code = 'cycle'))
+ON CONFLICT DO NOTHING;
+
+
+-- ============================================================
+-- TASK TEMPLATES SCHEMA & SEEDS
+-- ============================================================
+
+-- 1. Create task domain enum
+CREATE TYPE task_domain_enum AS ENUM (
+    'editorial',
+    'asset',
+    'shot',
+    'library',
+    'cycle'
+);
+
+-- 2. Create sequence for task templates
+CREATE SEQUENCE IF NOT EXISTS task_templates_id_seq START WITH 1000;
+
+-- 3. Create task_templates table
+CREATE TABLE IF NOT EXISTS public.task_templates (
+    id BIGINT PRIMARY KEY DEFAULT nextval('task_templates_id_seq'),
+    code VARCHAR(64) NOT NULL UNIQUE,
+    name VARCHAR(256) NOT NULL,
+    description VARCHAR(512),
+    domain_code task_domain_enum NOT NULL,
+    is_active BOOLEAN NOT NULL DEFAULT TRUE,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ,
+    created_by BIGINT,
+    updated_by BIGINT,
+    CONSTRAINT fk_task_templates_created_by FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE SET NULL,
+    CONSTRAINT fk_task_templates_updated_by FOREIGN KEY (updated_by) REFERENCES users(id) ON DELETE SET NULL
+);
+
+-- 4. Create pivot table for task_template to project_template mappings
+CREATE TABLE IF NOT EXISTS public.task_template_project_mappings (
+    task_template_id BIGINT NOT NULL REFERENCES task_templates(id) ON DELETE CASCADE,
+    project_template_id BIGINT NOT NULL REFERENCES templates(id) ON DELETE CASCADE,
+    PRIMARY KEY (task_template_id, project_template_id)
+);
+
+-- Index for fast lookup by code
+CREATE INDEX IF NOT EXISTS idx_task_templates_code ON task_templates(code);
+
+-- 5. Seed task templates
+INSERT INTO task_templates (code, name, description, domain_code, is_active, created_by)
+VALUES
+    ('script', 'Script', 'Domain script task template', 'editorial', true, 1000),
+    ('timeline', 'timeline', 'Domain timeline task template', 'editorial', true, 1000),
+    ('artwork', 'Art Work', 'Domain art-work task template', 'asset', true, 1000),
+    ('modeling', 'Modeling', 'Domain modeling task template', 'asset', true, 1000),
+    ('grooming', 'Grooming', 'Domain grooming task template', 'asset', true, 1000),
+    ('texture', 'Texture', 'Domain texture task template', 'asset', true, 1000),
+    ('surfacing', 'Surfacing', 'Domain surfacing task template', 'asset', true, 1000),
+    ('rigging', 'Rigging', 'Domain rigging task template', 'asset', true, 1000),
+    ('tracking', 'Tracking', 'Domain tracking task template', 'shot', true, 1000),
+    ('matchmovie', 'Match Movie', 'Domain match-movie task template', 'shot', true, 1000),
+    ('blocking', 'Blocking', 'Domain blocking task template', 'shot', true, 1000),
+    ('layout', 'Layout', 'Domain layout task template', 'shot', true, 1000),
+    ('animation', 'Animation', 'Domain animation task template', 'shot', true, 1000),
+    ('clothFX', 'Cloth FX', 'Domain cloth-FX task template', 'shot', true, 1000),
+    ('furFX', 'Fur FX', 'Domain fur-FX task template', 'shot', true, 1000),
+    ('specialFX', 'Special FX', 'Domain special-FX task template', 'shot', true, 1000),
+    ('rendering', 'Rendering', 'Domain rendering task template', 'shot', true, 1000),
+    ('rotoscopy', 'Rotoscopy', 'Domain rotoscopy task template', 'shot', true, 1000),
+    ('compositing', 'Compositing', 'Domain compositing task template', 'shot', true, 1000),
+    ('model', 'Model', 'Domain model task template', 'library', true, 1000),
+    ('shader', 'Shader', 'Domain shader task template', 'library', true, 1000),
+    ('pose', 'Pose', 'Domain pose task template', 'library', true, 1000),
+    ('anim', 'Anim', 'Domain anim task template', 'library', true, 1000),
+    ('other', 'Other', 'Domain other task template', 'library', true, 1000),
+    ('walk', 'Walk', 'Domain walk task template', 'cycle', true, 1000),
+    ('run', 'Run', 'Domain run task template', 'cycle', true, 1000),
+    ('action', 'Action', 'Domain action task template', 'cycle', true, 1000),
+    ('acting', 'Acting', 'Domain acting task template', 'cycle', true, 1000),
+    ('more', 'More', 'Domain other task template', 'cycle', true, 1000)
+ON CONFLICT (code) DO NOTHING;
+
+-- 6. Seed task_template_project_mappings
+-- Mappings for general task templates that apply to all 6 project templates:
+INSERT INTO task_template_project_mappings (task_template_id, project_template_id)
+SELECT tt.id, t.id
+FROM task_templates tt, templates t
+WHERE tt.code IN ('script', 'timeline', 'artwork', 'modeling', 'grooming', 'texture', 'surfacing', 'rigging', 'blocking', 'layout', 'animation', 'compositing', 'model', 'shader', 'pose', 'anim', 'other', 'walk', 'run', 'action', 'acting', 'more')
+  AND t.code IN ('featurefilm', 'youtube', 'vfx', 'shortfilm', 'trailer', 'game')
+ON CONFLICT DO NOTHING;
+
+-- Mappings for shot-tracking / rotoscopy templates (only applies to vfx):
+INSERT INTO task_template_project_mappings (task_template_id, project_template_id)
+SELECT tt.id, t.id
+FROM task_templates tt, templates t
+WHERE tt.code IN ('tracking', 'matchmovie', 'rotoscopy')
+  AND t.code = 'vfx'
+ON CONFLICT DO NOTHING;
+
+-- Mappings for FX / rendering templates (applies to all project templates EXCEPT game):
+INSERT INTO task_template_project_mappings (task_template_id, project_template_id)
+SELECT tt.id, t.id
+FROM task_templates tt, templates t
+WHERE tt.code IN ('clothFX', 'furFX', 'specialFX', 'rendering')
+  AND t.code IN ('featurefilm', 'youtube', 'vfx', 'shortfilm', 'trailer')
+ON CONFLICT DO NOTHING;
+
+
+-- ============================================================
+-- PUBLISH TEMPLATES SEEDS
+-- ============================================================
+INSERT INTO templates (code, name, description, thumbnail_url, tag, is_active, created_at, created_by, has_episode)
+VALUES
+    ('submit', 'Submit publish type', 'Submit publish type template', 'submit-thumbnail', 'publish', true, NOW(), 1000, false),
+    ('release', 'Release publish type', 'Release publish type template', 'release-thumbnail', 'publish', true, NOW(), 1000, false)
+ON CONFLICT (code) DO NOTHING;
+
+-- ============================================================
+-- DEFAULT ROLES SEEDS
+-- ============================================================
+INSERT INTO roles (code, name, description, is_active, created_at, created_by)
+VALUES
+    ('production', 'Production', 'Production Role', true, NOW(), 1000),
+    ('junior', 'Junior', 'Junior Role', true, NOW(), 1000),
+    ('artist', 'Artist', 'Artist Role', true, NOW(), 1000),
+    ('senior', 'Senior', 'Senior Role', true, NOW(), 1000),
+    ('teams_lead', 'Teams Lead', 'Teams Lead Role', true, NOW(), 1000),
+    ('supervisor', 'Supervisor', 'Supervisor Role', true, NOW(), 1000),
+    ('internship', 'Internship', 'Internship Role', true, NOW(), 1000),
+    ('head', 'Head', 'Head Role', true, NOW(), 1000)
+ON CONFLICT (code) DO NOTHING;
+
+-- ============================================================
+-- DEFAULT PERMISSIONS SEEDS
+-- ============================================================
+INSERT INTO permissions (code, name, description, is_active, created_at, created_by)
+VALUES
+    ('assets_read', 'Read Assets', 'Permission to view assets', true, NOW(), 1000),
+    ('assets_write', 'Write Assets', 'Permission to create and edit assets', true, NOW(), 1000),
+    ('projects_read', 'Read Projects', 'Permission to view projects', true, NOW(), 1000),
+    ('projects_write', 'Write Projects', 'Permission to create and edit projects', true, NOW(), 1000),
+    ('templates_manage', 'Manage Templates', 'Permission to manage templates', true, NOW(), 1000),
+    ('users_manage', 'Manage Users & Roles', 'Permission to manage users and roles', true, NOW(), 1000)
+ON CONFLICT (code) DO NOTHING;
+
+-- ============================================================
+-- SEED DEFAULT ROLE-PERMISSION MAPPINGS (Assign all permissions to default roles initially)
+-- ============================================================
+INSERT INTO role_permissions (role_id, permission_id)
+SELECT r.id, p.id
+FROM roles r, permissions p
+ON CONFLICT DO NOTHING;

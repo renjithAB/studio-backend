@@ -8,7 +8,7 @@ class SequenceBase(BaseModel):
     name: str
     description: Optional[str] = None
     project_id: int
-    episode_id: int
+    episode_id: Optional[int] = None
     is_active: bool = True
     thumbnail_url: Optional[str] = None
 
