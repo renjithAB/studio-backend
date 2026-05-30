@@ -1,9 +1,9 @@
 -- =====================================================
 -- CREATE SEQUENCES STARTING AT 1000 FOR ALL TABLES
 -- =====================================================
-CREATE SEQUENCE IF NOT EXISTS users_id_seq START WITH 1000;
-CREATE SEQUENCE IF NOT EXISTS templates_id_seq START WITH 1000;
-CREATE SEQUENCE IF NOT EXISTS roles_id_seq START WITH 1000;
+CREATE SEQUENCE IF NOT EXISTS users_id_seq START WITH 2000;
+CREATE SEQUENCE IF NOT EXISTS templates_id_seq START WITH 2000;
+CREATE SEQUENCE IF NOT EXISTS roles_id_seq START WITH 2000;
 CREATE SEQUENCE IF NOT EXISTS permissions_id_seq START WITH 1000;
 CREATE SEQUENCE IF NOT EXISTS projects_id_seq START WITH 1000;
 CREATE SEQUENCE IF NOT EXISTS domains_id_seq START WITH 1000;
@@ -126,15 +126,6 @@ CREATE TABLE IF NOT EXISTS public.role_permissions (
 );
 
 -- =====================================================
--- TEMPLATE DOMAIN MAPPINGS TABLE (many-to-many relationship)
--- =====================================================
-CREATE TABLE IF NOT EXISTS template_domain_mappings (
-    project_template_id BIGINT NOT NULL REFERENCES templates(id) ON DELETE CASCADE,
-    domain_template_id BIGINT NOT NULL REFERENCES templates(id) ON DELETE CASCADE,
-    PRIMARY KEY (project_template_id, domain_template_id)
-);
-
--- =====================================================
 -- PROJECTS TABLE
 -- =====================================================
 CREATE TABLE projects (
@@ -212,6 +203,7 @@ CREATE TABLE episodes (
     description VARCHAR(512),
     thumbnail_url VARCHAR(512),
     tag VARCHAR(64),
+    domain_id BIGINT,
     template_id BIGINT,
     project_id BIGINT NOT NULL,
     is_active BOOLEAN NOT NULL DEFAULT TRUE,
@@ -220,6 +212,7 @@ CREATE TABLE episodes (
     created_by BIGINT,
     updated_by BIGINT,
     CONSTRAINT fk_episodes_template FOREIGN KEY (template_id) REFERENCES templates(id) ON DELETE SET NULL,
+    CONSTRAINT fk_episodes_domain FOREIGN KEY (domain_id) REFERENCES domains(id) ON DELETE SET NULL,
     CONSTRAINT fk_episodes_project FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE,
     CONSTRAINT fk_episodes_created_by FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE SET NULL,
     CONSTRAINT fk_episodes_updated_by FOREIGN KEY (updated_by) REFERENCES users(id) ON DELETE SET NULL,
@@ -288,6 +281,7 @@ CREATE TABLE sequences (
     description VARCHAR(512),
     thumbnail_url VARCHAR(512),
     tag VARCHAR(64),
+    domain_id BIGINT,
     template_id BIGINT,
     project_id BIGINT NOT NULL,
     episode_id BIGINT,
@@ -299,6 +293,7 @@ CREATE TABLE sequences (
     created_by BIGINT,
     updated_by BIGINT,
     CONSTRAINT fk_sequences_template FOREIGN KEY (template_id) REFERENCES templates(id) ON DELETE SET NULL,
+    CONSTRAINT fk_sequences_domain FOREIGN KEY (domain_id) REFERENCES domains(id) ON DELETE SET NULL,
     CONSTRAINT fk_sequences_project FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE,
     CONSTRAINT fk_sequences_episode FOREIGN KEY (episode_id) REFERENCES episodes(id) ON DELETE SET NULL,
     CONSTRAINT fk_sequences_created_by FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE SET NULL,
@@ -316,6 +311,7 @@ CREATE TABLE shots (
     description VARCHAR(512),
     thumbnail_url VARCHAR(512),
     tag VARCHAR(64),
+    domain_id BIGINT,
     template_id BIGINT,
     project_id BIGINT NOT NULL,
     episode_id BIGINT,
@@ -331,6 +327,7 @@ CREATE TABLE shots (
     created_by BIGINT,
     updated_by BIGINT,
     CONSTRAINT fk_shots_template FOREIGN KEY (template_id) REFERENCES templates(id) ON DELETE SET NULL,
+    CONSTRAINT fk_shots_domain FOREIGN KEY (domain_id) REFERENCES domains(id) ON DELETE SET NULL,
     CONSTRAINT fk_shots_project FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE,
     CONSTRAINT fk_shots_episode FOREIGN KEY (episode_id) REFERENCES episodes(id) ON DELETE SET NULL,
     CONSTRAINT fk_shots_sequence FOREIGN KEY (sequence_id) REFERENCES sequences(id) ON DELETE CASCADE,
@@ -399,6 +396,7 @@ CREATE TABLE tasks (
     description VARCHAR(512),
     thumbnail_url VARCHAR(512),
     tag VARCHAR(64),
+    domain_id BIGINT,
     template_id BIGINT,
     project_id BIGINT NOT NULL,
     asset_id BIGINT,
@@ -415,6 +413,7 @@ CREATE TABLE tasks (
     created_by BIGINT,
     updated_by BIGINT,
     CONSTRAINT fk_tasks_template FOREIGN KEY (template_id) REFERENCES templates(id) ON DELETE SET NULL,
+    CONSTRAINT fk_tasks_domain FOREIGN KEY (domain_id) REFERENCES domains(id) ON DELETE SET NULL,
     CONSTRAINT fk_tasks_project FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE,
     CONSTRAINT fk_tasks_asset FOREIGN KEY (asset_id) REFERENCES assets(id) ON DELETE CASCADE,
     CONSTRAINT fk_tasks_category FOREIGN KEY (category_id) REFERENCES categories(id) ON DELETE SET NULL,
@@ -758,7 +757,7 @@ ALTER TABLE tasks
 INSERT INTO templates (id, code, name, description, thumbnail_url, tag, is_active, created_at, created_by, has_episode)
 VALUES 
     (1001, 'featurefilm', 'Animation Feature Film', 'Animation feature film template', 'animation-template', NULL, true, NOW(), 1000, true),
-    (1002, 'youtube', 'Youtube Episodic', 'YouTube Channel template (Suite for Episodic TV as well)', 'youtube-template', NULL, true, NOW(), 1000, false),
+    (1002, 'youtube', 'Youtube Episodic', 'YouTube Channel template (Suite for Episodic TV as well)', 'youtube-template', NULL, true, NOW(), 1000, true),
     (1003, 'vfx', 'Visual Effects', 'Visual Effects template', 'vfx-template', NULL, true, NOW(), 1000, false),
     (1004, 'shortfilm', 'Short Film', 'Short film template', 'shortfilm-template', NULL, true, NOW(), 1000, false),
     (1005, 'trailer', 'Trailer', 'Trailer template', 'trailer-template', NULL, true, NOW(), 1000, false),
@@ -769,6 +768,7 @@ INSERT INTO templates (code, name, description, thumbnail_url, tag, is_active, c
 VALUES 
     ('asset', 'Asset', 'Asset domain template', 'asset-thumbnail', 'domain', true, NOW(), 1000, false),
     ('episode', 'Episode', 'Episode domain template', 'episode-thumbnail', 'domain', true, NOW(), 1000, false),
+    ('sequence', 'Sequence', 'Sequence domain template', 'sequence-thumbnail', 'domain', true, NOW(), 1000, false),
     ('editorial', 'Editorial', 'Editorial domain template', 'editorial-thumbnail', 'domain', true, NOW(), 1000, false),
     ('library', 'Library', 'Library domain template', 'library-thumbnail', 'domain', true, NOW(), 1000, false),
     ('cycle', 'Cycle', 'Cycles domain template', 'cycle-thumbnail', 'domain', true, NOW(), 1000, false)
@@ -788,42 +788,6 @@ VALUES
     ('vehicle', 'Vehicle', 'Domain vehicle category template', NULL, 'category', true, NOW(), 1000, false),
     ('weapon', 'Weapon', 'Domain weapon category template', NULL, 'category', true, NOW(), 1000, false)
 ON CONFLICT (code) DO NOTHING;
-
--- Seed many-to-many template-domain mappings
-INSERT INTO template_domain_mappings (project_template_id, domain_template_id)
-VALUES
-    (1001, (SELECT id FROM templates WHERE code = 'asset')),
-    (1001, (SELECT id FROM templates WHERE code = 'editorial')),
-    (1001, (SELECT id FROM templates WHERE code = 'library')),
-    (1001, (SELECT id FROM templates WHERE code = 'cycle')),
-    
-    (1002, (SELECT id FROM templates WHERE code = 'asset')),
-    (1002, (SELECT id FROM templates WHERE code = 'episode')),
-    (1002, (SELECT id FROM templates WHERE code = 'editorial')),
-    (1002, (SELECT id FROM templates WHERE code = 'library')),
-    (1002, (SELECT id FROM templates WHERE code = 'cycle')),
-    
-    (1003, (SELECT id FROM templates WHERE code = 'asset')),
-    (1003, (SELECT id FROM templates WHERE code = 'editorial')),
-    (1003, (SELECT id FROM templates WHERE code = 'library')),
-    (1003, (SELECT id FROM templates WHERE code = 'cycle')),
-    
-    (1004, (SELECT id FROM templates WHERE code = 'asset')),
-    (1004, (SELECT id FROM templates WHERE code = 'editorial')),
-    (1004, (SELECT id FROM templates WHERE code = 'library')),
-    (1004, (SELECT id FROM templates WHERE code = 'cycle')),
-    
-    (1005, (SELECT id FROM templates WHERE code = 'asset')),
-    (1005, (SELECT id FROM templates WHERE code = 'editorial')),
-    (1005, (SELECT id FROM templates WHERE code = 'library')),
-    (1005, (SELECT id FROM templates WHERE code = 'cycle')),
-    
-    (1006, (SELECT id FROM templates WHERE code = 'asset')),
-    (1006, (SELECT id FROM templates WHERE code = 'editorial')),
-    (1006, (SELECT id FROM templates WHERE code = 'library')),
-    (1006, (SELECT id FROM templates WHERE code = 'cycle'))
-ON CONFLICT DO NOTHING;
-
 
 -- ============================================================
 -- TASK TEMPLATES SCHEMA & SEEDS
@@ -970,4 +934,4 @@ ON CONFLICT (code) DO NOTHING;
 INSERT INTO role_permissions (role_id, permission_id)
 SELECT r.id, p.id
 FROM roles r, permissions p
-ON CONFLICT DO NOTHING;
+ON CONFLICT DO NOTHING;

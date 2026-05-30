@@ -24,37 +24,13 @@ class EpisodeService:
             name=episode_in.name,
             description=episode_in.description,
             project_id=episode_in.project_id,
+            domain_id=episode_in.domain_id,
             is_active=episode_in.is_active,
             created_by=created_by,
             updated_by=created_by,
         )
         db.add(db_obj)
         db.flush()
-
-        # 2. If extra nodes requested, create copies for all other episode domains
-        if episode_in.create_extra_nodes:
-            # Find all domains in this project with code == 'episode'
-            episode_domains = db.query(Domain).filter(
-                Domain.project_id == episode_in.project_id,
-                Domain.code == 'episode'
-            ).all()
-
-            # Exclude the domain already used for the primary episode
-            for domain in episode_domains:
-                if domain.id == episode_in.domain_id:
-                    continue
-
-                extra_episode = Episode(
-                    code=episode_in.code,
-                    name=episode_in.name,
-                    description=episode_in.description,
-                    project_id=episode_in.project_id,
-                    is_active=episode_in.is_active,
-                    created_by=created_by,
-                    updated_by=created_by,
-                )
-                db.add(extra_episode)
-                logger.debug(f"Created extra episode for domain {domain.id}")
 
         # 3. Commit all changes
         db.commit()

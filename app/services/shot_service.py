@@ -19,6 +19,12 @@ class ShotService:
         created_by: Optional[int] = None
     ) -> ShotResponse:
         logger.info(f"Creating shot: {shot_in.name} for sequence {shot_in.sequence_id}")
+        domain_id = shot_in.domain_id
+        if (not domain_id or domain_id == -100) and shot_in.sequence_id:
+            from app.models.sequence import Sequence
+            sequence = db.query(Sequence).filter(Sequence.id == shot_in.sequence_id).first()
+            if sequence:
+                domain_id = sequence.domain_id
 
         db_obj = Shot(
             code=shot_in.code,
@@ -26,6 +32,7 @@ class ShotService:
             description=shot_in.description,
             project_id=shot_in.project_id,
             sequence_id=shot_in.sequence_id,
+            domain_id=domain_id,
             frame_start=shot_in.frame_start,
             frame_end=shot_in.frame_end,
             is_active=shot_in.is_active,
@@ -39,23 +46,15 @@ class ShotService:
         # 2. Create the Associated Tasks if provided
         if shot_in.tasks:
             # Resolve domain_id (typically from the episode or standard for shot)
+            from app.models.sequence import Sequence
             sequence = db.get(Sequence, shot_in.sequence_id)
-            domain_id = 0
-            if sequence:
-                from app.models.domain import Domain
-                domain = db.query(Domain).filter(
-                    Domain.project_id == shot_in.project_id,
-                    Domain.domain_type.in_(['episode', 'editorial'])
-                ).first()
-                if domain:
-                    domain_id = domain.id
-
             from app.models.task import Task
             for task_code in shot_in.tasks:
                 task_obj = Task(
                     code=task_code,
                     name=task_code.capitalize(),
                     project_id=shot_in.project_id,
+                    domain_id=domain_id,
                     episode_id=sequence.episode_id if sequence else None,
                     sequence_id=shot_in.sequence_id,
                     shot_id=db_obj.id,

@@ -9,6 +9,7 @@ class SequenceBase(BaseModel):
     description: Optional[str] = None
     project_id: int
     episode_id: Optional[int] = None
+    domain_id: Optional[int] = None
     is_active: bool = True
     thumbnail_url: Optional[str] = None
 

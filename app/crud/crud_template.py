@@ -26,10 +26,18 @@ class CRUDTemplate:
         tier: Optional[str] = None,
         domain: Optional[str] = None
     ) -> List[Template]:
-        query = db.query(Template).filter(
-            Template.is_active == True,
-            (Template.tag.is_(None)) | (~Template.tag.in_(['role', 'permission']))
-        )
+        query = db.query(Template).filter(Template.is_active == True)
+        
+        if tier == 'projectTemplate':
+            query = query.filter(Template.tag.is_(None))
+        elif tier == 'domainTemplate':
+            query = query.filter(Template.tag == 'domain')
+        elif tier == 'categoryTemplate':
+            query = query.filter(Template.tag == 'category')
+        elif tier == 'publishTemplate':
+            query = query.filter(Template.tag == 'publish')
+        else:
+            query = query.filter((Template.tag.is_(None)) | (~Template.tag.in_(['role', 'permission'])))
             
         return query.order_by(Template.code).offset(skip).limit(limit).all()
 

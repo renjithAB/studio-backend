@@ -13,6 +13,7 @@ class Sequence(BaseModel):
     frame_end = Column(Integer, nullable=True)
     
     template_id = Column(BigInteger, ForeignKey('templates.id'), nullable=True)
+    domain_id = Column(BigInteger, ForeignKey('domains.id'), nullable=True)
     project_id = Column(BigInteger, ForeignKey('projects.id'), nullable=False)
     episode_id = Column(BigInteger, ForeignKey('episodes.id'), nullable=True)
     

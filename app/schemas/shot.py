@@ -9,6 +9,7 @@ class ShotBase(BaseModel):
     description: Optional[str] = None
     project_id: int
     sequence_id: int
+    domain_id: Optional[int] = None
     is_active: bool = True
     thumbnail_url: Optional[str] = None
     frame_start: Optional[int] = None

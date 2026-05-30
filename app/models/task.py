@@ -11,6 +11,7 @@ class Task(BaseModel):
     name = Column(String(64), nullable=False)
     
     template_id = Column(BigInteger, ForeignKey('templates.id'), nullable=True)
+    domain_id = Column(BigInteger, ForeignKey('domains.id'), nullable=True)
     project_id = Column(BigInteger, ForeignKey('projects.id'), nullable=False)
     
     asset_id = Column(BigInteger, ForeignKey('assets.id'), nullable=True)

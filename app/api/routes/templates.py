@@ -52,74 +52,78 @@ def list_templates(
     for t in res:
         merged_templates.append(t)
         
-    # Query task templates and append them
-    from app.models.task_template import TaskTemplate
-    task_templates = db.query(TaskTemplate).filter(TaskTemplate.is_active == True).all()
-    
-    class TaskTemplateAdapter:
-        def __init__(self, task_tmpl):
-            self.id = task_tmpl.id
-            self.code = task_tmpl.code
-            self.name = task_tmpl.name
-            self.description = task_tmpl.description
-            self.thumbnail_url = None
-            self.tag = "task"
-            self.has_episode = False
-            self.is_active = task_tmpl.is_active
-            self.applicable_templates = ",".join(task_tmpl.applies_to_templates)
-            self.created_at = task_tmpl.created_at
-            self.updated_at = task_tmpl.updated_at
-            self.created_by = task_tmpl.created_by
-            self.updated_by = task_tmpl.updated_by
-
-    for tt in task_templates:
-        merged_templates.append(TaskTemplateAdapter(tt))
+    # Only append task templates, roles, and permissions if we are not filtering by a specific template tier (like projectTemplate)
+    if not tier or tier == 'taskTemplate':
+        # Query task templates and append them
+        from app.models.task_template import TaskTemplate
+        task_templates = db.query(TaskTemplate).filter(TaskTemplate.is_active == True).all()
         
-    # Query roles and append them
-    from app.models.role import Role
-    roles = db.query(Role).all()
-    
-    class RoleAdapter:
-        def __init__(self, role):
-            self.id = role.id
-            self.code = role.code
-            self.name = role.name
-            self.description = role.description
-            self.thumbnail_url = None
-            self.tag = "role"
-            self.has_episode = False
-            self.is_active = role.is_active
-            self.applicable_templates = None
-            self.created_at = role.created_at
-            self.updated_at = role.updated_at
-            self.created_by = role.created_by
-            self.updated_by = role.updated_by
+        class TaskTemplateAdapter:
+            def __init__(self, task_tmpl):
+                self.id = task_tmpl.id
+                self.code = task_tmpl.code
+                self.name = task_tmpl.name
+                self.description = task_tmpl.description
+                self.thumbnail_url = None
+                self.tag = "task"
+                self.has_episode = False
+                self.is_active = task_tmpl.is_active
+                self.applicable_templates = ",".join(task_tmpl.applies_to_templates)
+                self.created_at = task_tmpl.created_at
+                self.updated_at = task_tmpl.updated_at
+                self.created_by = task_tmpl.created_by
+                self.updated_by = task_tmpl.updated_by
 
-    for r in roles:
-        merged_templates.append(RoleAdapter(r))
+        for tt in task_templates:
+            merged_templates.append(TaskTemplateAdapter(tt))
+            
+    if not tier or tier == 'roleTemplate':
+        # Query roles and append them
+        from app.models.role import Role
+        roles = db.query(Role).all()
         
-    # Query permissions and append them
-    from app.models.permission import Permission
-    permissions = db.query(Permission).all()
-    
-    class PermissionAdapter:
-        def __init__(self, perm):
-            self.id = perm.id
-            self.code = perm.code
-            self.name = perm.name
-            self.description = perm.description
-            self.thumbnail_url = None
-            self.tag = "permission"
-            self.has_episode = False
-            self.is_active = perm.is_active
-            self.applicable_templates = None
-            self.created_at = perm.created_at
-            self.updated_at = perm.updated_at
-            self.created_by = perm.created_by
-            self.updated_by = perm.updated_by
+        class RoleAdapter:
+            def __init__(self, role):
+                self.id = role.id
+                self.code = role.code
+                self.name = role.name
+                self.description = role.description
+                self.thumbnail_url = None
+                self.tag = "role"
+                self.has_episode = False
+                self.is_active = role.is_active
+                self.applicable_templates = None
+                self.created_at = role.created_at
+                self.updated_at = role.updated_at
+                self.created_by = role.created_by
+                self.updated_by = role.updated_by
 
-    for p in permissions:
-        merged_templates.append(PermissionAdapter(p))
+        for r in roles:
+            merged_templates.append(RoleAdapter(r))
+            
+    if not tier or tier == 'permissionTemplate':
+        # Query permissions and append them
+        from app.models.permission import Permission
+        permissions = db.query(Permission).all()
+        
+        class PermissionAdapter:
+            def __init__(self, perm):
+                self.id = perm.id
+                self.code = perm.code
+                self.name = perm.name
+                self.description = perm.description
+                self.thumbnail_url = None
+                self.tag = "permission"
+                self.has_episode = False
+                self.is_active = perm.is_active
+                self.applicable_templates = None
+                self.created_at = perm.created_at
+                self.updated_at = perm.updated_at
+                self.created_by = perm.created_by
+                self.updated_by = perm.updated_by
+
+        for p in permissions:
+            merged_templates.append(PermissionAdapter(p))
         
     print(f"DEBUG: list_templates endpoint fetched {len(merged_templates)} merged templates from DB")
     return merged_templates

@@ -10,6 +10,7 @@ class DomainTypeEnum(str, enum.Enum):
     asset = 'asset'
     editorial = 'editorial'
     episode = 'episode'
+    sequence = 'sequence'
     library = 'library'
     cycle = 'cycle'
 

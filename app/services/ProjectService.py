@@ -12,6 +12,8 @@ from app.models.project import Project
 from app.models.episode import Episode
 from app.models.sequence import Sequence
 from app.models.shot import Shot
+from app.models.permission import Permission
+from app.models.role import Role
 from app.models.asset import Asset
 from app.models.variant import Variant
 from app.models.editorial import Editorial
@@ -118,41 +120,30 @@ class ProjectService:
         template_code = template.code
 
         # 5. Determine which domains apply to this template
-        # Episode domain only created for episodic templates; non-episodic get sequence instead
-        applicable_domains = []
-        for dom in TEMPLATE_CONFIG["domains"]:
-            # Skip library and cycle on project creation
-            if dom.get("code") in ["library", "cycle"]:
-                continue
-            # Episode domain: only include if template is episodic
-            if dom.get("code") == "episode":
-                if template.has_episode:
-                    applicable_domains.append(dom)
-                continue
-            # Sequence domain: only include if template is NOT episodic
-            if dom.get("code") == "sequence":
-                if not template.has_episode:
-                    applicable_domains.append(dom)
-                continue
-            if template_code in dom.get("applies_to_templates", []):
-                applicable_domains.append(dom)
+        applicable_domain_codes = ["asset", "editorial"]
+        if template.has_episode:
+            applicable_domain_codes.append("episode")
+        else:
+            applicable_domain_codes.append("sequence")
+            
+        applicable_domains = db.query(Template).filter(Template.code.in_(applicable_domain_codes)).all()
         print(f"Found {len(applicable_domains)} applicable domains (has_episode={template.has_episode})")
 
         # 6. Create Domain records
         domain_by_code: Dict[str, Domain] = {}
-        for dom_def in applicable_domains:
+        for dom_tmpl in applicable_domains:
             domain = Domain(
-                code=dom_def["code"],
-                name=dom_def["name"],
-                description=dom_def.get("description"),
+                code=dom_tmpl.code,
+                name=dom_tmpl.name,
+                description=dom_tmpl.description,
                 project_id=project.id,
                 created_by=created_by,
                 updated_by=created_by,
-                domain_type=dom_def["code"],
+                domain_type=dom_tmpl.code,
             )
             db.add(domain)
             db.flush()
-            domain_by_code[dom_def["code"]] = domain
+            domain_by_code[dom_tmpl.code] = domain
             print(f"✓ Created domain: {domain.code} (ID: {domain.id})")
 
         # 7. Create Categories under the Asset domain (if present)
@@ -173,78 +164,12 @@ class ProjectService:
                 db.flush()
                 print(f"  ✓ Created category: {category.code} under Asset domain")
 
-        # 8. Create hierarchy entities based on domains
-
-        # Episode
+        # 8. We no longer auto-create default Episode, Sequence, or Shot entities.
+        # The user will manually create them inside the domains.
         episode = None
-        if "episode" in domain_by_code and template.has_episode:
-            episode = Episode(
-                code="EP01",
-                name="Episode 01",
-                description=f"Default episode for {project.name}",
-                project_id=project.id,
-                # domain_id=domain_by_code["episode"].id,
-                created_by=created_by,
-            )
-            db.add(episode)
-            db.flush()
-            print(f"\n✓ CREATED EPISODE: {episode.code} (ID: {episode.id})")
-
-        # Sequence
-        # For episodic templates: sequence is under the episode
-        # For non-episodic templates: sequence is at project level (no episode)
         sequence = None
         shots = []
-        if template.has_episode and episode:
-            # Episodic — create one default sequence under the episode
-            sequence = Sequence(
-                code="SQ01",
-                name="Sequence 01",
-                description=f"Default sequence for {project.name}",
-                project_id=project.id,
-                episode_id=episode.id,
-                frame_start=1001,
-                frame_end=1100,
-                created_by=created_by,
-            )
-            db.add(sequence)
-            db.flush()
-            print(f"✓ CREATED SEQUENCE (under episode): {sequence.code} (ID: {sequence.id})")
-        elif not template.has_episode and "sequence" in domain_by_code:
-            # Non-episodic — create sequence directly at project level
-            sequence = Sequence(
-                code="SQ01",
-                name="Sequence 01",
-                description=f"Default sequence for {project.name}",
-                project_id=project.id,
-                episode_id=None,
-                frame_start=1001,
-                frame_end=1100,
-                created_by=created_by,
-            )
-            db.add(sequence)
-            db.flush()
-            print(f"✓ CREATED SEQUENCE (project-level): {sequence.code} (ID: {sequence.id})")
-
-        # Shots under the sequence (applies for both episodic and non-episodic paths)
-        if sequence and "shot" in domain_by_code:
-            shot_domain = domain_by_code["shot"]
-            for i in range(1, 4):
-                shot = Shot(
-                    code=f"SH00{i}",
-                    name=f"Shot 00{i}",
-                    description=f"Default shot {i} for {project.name}",
-                    project_id=project.id,
-                    sequence_id=sequence.id,
-                    frame_start=1001 + ((i-1) * 25),
-                    frame_end=1001 + (i * 25) - 1,
-                    asset_ids=[],
-                    created_by=created_by,
-                )
-                db.add(shot)
-                db.flush()
-                shots.append(shot)
-                print(f"  ✓ CREATED SHOT: {shot.code} (ID: {shot.id})")
+        ed_shots = []
 
         # Assets
         assets = []

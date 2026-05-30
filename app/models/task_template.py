@@ -8,6 +8,7 @@ class TaskDomainEnum(str, enum.Enum):
     editorial = "editorial"
     asset = "asset"
     shot = "shot"
+    sequence = "sequence"
     library = "library"
     cycle = "cycle"
 

@@ -92,16 +92,17 @@ class HierarchyService:
         )
         
         header_id = -1  # negative IDs for headers
-        
-        # Check if project template is "Animation Feature Film" (code: "featurefilm")
-        is_feature_film = False
-        if project.template and (project.template.code == "featurefilm" or project.template.name == "Animation Feature Film"):
-            is_feature_film = True
+        # Check if project template is non-episodic (e.g. Animation Feature Film or Game)
+        has_episode = project.template.has_episode if project.template else True
+        is_feature_film = not has_episode
 
         if is_feature_film:
-            # ==================== FEATURE FILM SEQUENCES SECTION ====================
+            # ==================== SEQUENCE SECTION ====================
+            sequence_domain = domain_map.get('sequence')
+            seq_domain_id = sequence_domain.id if sequence_domain else -100
+            
             sequences_header = HierarchyEntity(
-                id=-100,
+                id=seq_domain_id,
                 type="domain",
                 domain_type='sequence',
                 code="SEQUENCES",
@@ -109,15 +110,19 @@ class HierarchyService:
                 description="All sequences in this project",
                 children=[],
                 metadata={
-                    "domain_id": -100,
+                    "domain_id": seq_domain_id,
                     "can_create": True,
                     "create_type": "sequence"
                 }
             )
             
             # Get actual sequences
+            sequence_domain = domain_map.get('sequence')
+            seq_domain_id = sequence_domain.id if sequence_domain else None
+            
             sequences = db.query(Sequence).filter(
                 Sequence.project_id == project_id,
+                Sequence.domain_id == seq_domain_id,
                 Sequence.is_active == True
             ).order_by(Sequence.code).all()
             
@@ -132,7 +137,7 @@ class HierarchyService:
                     children=[],
                     metadata={
                         **HierarchyService._get_model_data(sequence),
-                        "domain_id": -100,
+                        "domain_id": seq_domain_id,
                         "project_id": sequence.project_id,
                         "project_code": project_code,
                         "project_name": project_name,
@@ -159,7 +164,7 @@ class HierarchyService:
                         children=[],
                         metadata={
                             **HierarchyService._get_model_data(shot),
-                            "domain_id": -100,
+                            "domain_id": seq_domain_id,
                             "domain_name": "Sequences",
                             "project_id": shot.project_id,
                             "project_code": project_code,
@@ -195,7 +200,7 @@ class HierarchyService:
                             children=[],
                             metadata={
                                 **HierarchyService._get_model_data(task),
-                                "domain_id": -100,
+                                "domain_id": seq_domain_id,
                                 "domain_name": "Sequences",
                                 "project_id": task.project_id,
                                 "project_code": project_code,
@@ -237,7 +242,7 @@ class HierarchyService:
                                     children=[],
                                     metadata={
                                         **HierarchyService._get_model_data(ver),
-                                        "domain_id": -100,
+                                        "domain_id": seq_domain_id,
                                         "project_id": task.project_id,
                                         "project_code": project_code,
                                         "episode_id": None,
@@ -263,7 +268,7 @@ class HierarchyService:
                                 children=version_nodes,
                                 metadata={
                                     **HierarchyService._get_model_data(publish_type),
-                                    "domain_id": -100,
+                                    "domain_id": seq_domain_id,
                                     "domain_name": "Sequences",
                                     "project_id": task.project_id,
                                     "project_code": project_code,
@@ -317,6 +322,7 @@ class HierarchyService:
                 # Get actual episodes
                 episodes = db.query(Episode).filter(
                     Episode.project_id == project_id,
+                    Episode.domain_id == episode_domain.id,
                     Episode.is_active == True
                 ).order_by(Episode.code).all()
                 
@@ -788,6 +794,7 @@ class HierarchyService:
                 
                 episodes = db.query(Episode).filter(
                     Episode.project_id == project_id,
+                    Episode.domain_id == editorial_domain.id,
                     Episode.is_active == True
                 ).order_by(Episode.code).all()
                 
@@ -1107,6 +1114,7 @@ class HierarchyService:
                 # Query all sequences directly under the project
                 sequences = db.query(Sequence).filter(
                     Sequence.project_id == project_id,
+                    Sequence.domain_id == editorial_domain.id,
                     Sequence.is_active == True
                 ).order_by(Sequence.code).all()
                 
@@ -1480,22 +1488,28 @@ class HierarchyService:
         project = db.query(Project).filter(Project.id == project_id).first()
         project_code = project.code if project else "UNK"
         project_name = project.name if project else "Unknown Project"
-
-        is_feature_film = False
-        if project and project.template and (project.template.code == "featurefilm" or project.template.name == "Animation Feature Film"):
-            is_feature_film = True
+        has_episode = project.template.has_episode if project and project.template else True
+        is_feature_film = not has_episode
 
         if entity_type == "project":
             # Project -> Domains
             domains = db.query(Domain).filter(
                 Domain.project_id == project_id,
                 Domain.is_active == True
-            ).all()
+            ).order_by(Domain.id).all()
 
             for d in domains:
                 d_type = d.domain_type.value if hasattr(d.domain_type, 'value') else d.domain_type
                 if is_feature_film and d_type == 'episode':
                     continue
+                
+                # Special handling for featurefilm (non-episodic) sequence domain
+                metadata_extra = {}
+                if is_feature_film and d_type == 'sequence':
+                    metadata_extra = {
+                        "create_type": "sequence",
+                        "can_create": True
+                    }
 
                 children.append(HierarchyEntity(
                     id=d.id,
@@ -1503,42 +1517,28 @@ class HierarchyService:
                     domain_type=d_type,
                     code=d.code,
                     name=d.name,
-                    thumbnail_url=d.thumbnail_url,
+                    thumbnail_url=None,
                     description=d.description,
                     children=[],
                     metadata={
+                        **HierarchyService._get_model_data(d),
                         "project_id": project_id,
                         "project_code": project_code,
                         "domain_id": d.id,
                         "can_create": True,
-                        "create_type": "episode" if d_type in ['episode', 'editorial'] else ("category" if d_type == 'asset' else "library")
-                    }
-                ))
-
-            if is_feature_film:
-                children.append(HierarchyEntity(
-                    id=-100,
-                    type="domain",
-                    domain_type='sequence',
-                    code="SEQUENCES",
-                    name="Sequences",
-                    thumbnail_url=None,
-                    description="All sequences in this project",
-                    children=[],
-                    metadata={
-                        "project_id": project_id,
-                        "project_code": project_code,
-                        "domain_id": -100,
-                        "can_create": True,
-                        "create_type": "sequence"
+                        "create_type": metadata_extra.get("create_type") or ("episode" if d_type in ['episode', 'editorial'] else ("category" if d_type == 'asset' else "library"))
                     }
                 ))
 
         elif entity_type == "domain":
-            # Domain -> Episodes, Categories, or Libraries
-            if is_feature_film and entity_id == -100:
+            domain = db.query(Domain).filter(Domain.id == entity_id).first()
+            domain_type = domain.domain_type.value if domain and hasattr(domain.domain_type, 'value') else (domain.domain_type if domain else None)
+
+            # Domain -> Episodes, Categories, Libraries, or Sequences
+            if is_feature_film and domain_type == 'sequence':
                 sequences = db.query(Sequence).filter(
                     Sequence.project_id == project_id,
+                    Sequence.domain_id == entity_id,
                     Sequence.is_active == True
                 ).order_by(Sequence.code).all()
 
@@ -1555,7 +1555,7 @@ class HierarchyService:
                             "project_id": project_id,
                             "project_code": project_code,
                             "project_name": project_name,
-                            "domain_id": -100,
+                            "domain_id": entity_id,
                             "domain_name": "Sequences",
                             "episode_id": None,
                             "episode_code": None,
@@ -1578,6 +1578,7 @@ class HierarchyService:
                     # Non-episodic: load sequences directly under the editorial domain
                     sequences = db.query(Sequence).filter(
                         Sequence.project_id == project_id,
+                        Sequence.domain_id == entity_id,
                         Sequence.is_active == True
                     ).order_by(Sequence.code).all()
                     
@@ -1605,6 +1606,7 @@ class HierarchyService:
                 # Episodic projects (standard flow)
                 episodes = db.query(Episode).filter(
                     Episode.project_id == project_id,
+                    Episode.domain_id == entity_id,
                     Episode.is_active == True
                 ).order_by(Episode.code).all()
 
@@ -1768,15 +1770,16 @@ class HierarchyService:
                 ).first()
                 domain_id = domain.id if domain else None
             else:
+                domain_types = ['episode', 'editorial', 'sequence'] if is_feature_film else ['episode', 'editorial']
                 domain = db.query(Domain).filter(
                     Domain.project_id == project_id,
-                    Domain.domain_type.in_(['episode', 'editorial'])
+                    Domain.domain_type.in_(domain_types)
                 ).first() if sequence else None
                 domain_type = domain.domain_type.value if domain and hasattr(domain.domain_type, 'value') else (domain.domain_type if domain else None)
                 domain_id = domain.id if domain else None
 
             # Fetch shots under sequence in Episode, Editorial or featurefilm (Sequence-root) domain
-            if domain_type in ['episode', 'editorial'] or is_feature_film:
+            if domain_type in ['episode', 'editorial', 'sequence'] or is_feature_film:
                 shots = db.query(Shot).filter(
                     Shot.sequence_id == entity_id,
                     Shot.project_id == project_id,
@@ -1786,7 +1789,7 @@ class HierarchyService:
                 for shot in shots:
                     # Determine virtual sequence header or correct domain
                     is_seq_root = is_feature_film and domain_type != 'editorial'
-                    dom_id_to_use = -100 if is_seq_root else domain_id
+                    dom_id_to_use = domain_id
                     dom_name_to_use = "Sequences" if is_seq_root else ("Editorials" if domain_type == 'editorial' else "Episodes")
 
                     shot_node = HierarchyEntity(
