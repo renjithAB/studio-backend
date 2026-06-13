@@ -24,6 +24,8 @@ class VersionBase(BaseModel):
     tag: Optional[str] = None
     thumbnail_url: Optional[str] = None
     movie_url: Optional[str] = None
+    image_path: Optional[str] = None
+    video_path: Optional[str] = None
     is_active: bool = True
 
     @field_validator("code")
@@ -43,6 +45,8 @@ class VersionUpdate(BaseModel):
     tag: Optional[str] = None
     thumbnail_url: Optional[str] = None
     movie_url: Optional[str] = None
+    image_path: Optional[str] = None
+    video_path: Optional[str] = None
     is_active: Optional[bool] = None
 
 

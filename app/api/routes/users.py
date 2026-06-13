@@ -74,10 +74,9 @@ def create_user(
     if db.query(User).filter(User.email == user_in.email).first():
         raise HTTPException(status_code=400, detail="A user with this email address already exists")
 
-    if user_in.role_id:
-        role_id = validate_id(user_in.role_id)
-        if not db.query(Role).filter(Role.id == role_id, Role.is_active == True).first():
-            raise HTTPException(status_code=404, detail="Role not found")
+    role_id = validate_id(user_in.role_id)
+    if not db.query(Role).filter(Role.id == role_id, Role.is_active == True).first():
+        raise HTTPException(status_code=404, detail="Role not found")
 
     new_user = User(
         email=user_in.email,
@@ -122,7 +121,7 @@ def update_user(
         user.private_key = hash_password(user_in.password)
     if user_in.role_id is not None:
         if user_in.role_id == 0:
-            user.role_id = None
+            raise HTTPException(status_code=400, detail="Role is mandatory")
         else:
             role_id = validate_id(user_in.role_id)
             if not db.query(Role).filter(Role.id == role_id, Role.is_active == True).first():

@@ -2420,6 +2420,7 @@ class HierarchyService:
                     description=ver.description,
                     children=[],
                     metadata={
+                        **HierarchyService._get_model_data(ver),
                         "project_id": project_id,
                         "project_code": project_code,
                         "project_name": project_name,

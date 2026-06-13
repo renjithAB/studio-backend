@@ -56,7 +56,7 @@ class UserListItem(BaseModel):
 
 class UserCreate(UserBase):
     password: str
-    role_id: Optional[int] = None
+    role_id: int
     is_super: bool = False
 
 

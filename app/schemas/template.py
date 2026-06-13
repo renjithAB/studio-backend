@@ -12,6 +12,7 @@ class TemplateBase(BaseModel):
     description: Optional[str] = None
     thumbnail_url: Optional[str] = None
     tag: Optional[str] = None
+    domain: Optional[str] = None
     has_episode: bool = False
     is_active: bool = True
     applicable_templates: Optional[str] = None
@@ -32,6 +33,7 @@ class TemplateUpdate(BaseModel):
     description: Optional[str] = None
     thumbnail_url: Optional[str] = None
     tag: Optional[str] = None
+    domain: Optional[str] = None
     code: Optional[str] = None
     has_episode: Optional[bool] = None
     is_active: Optional[bool] = None

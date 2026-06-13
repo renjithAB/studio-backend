@@ -29,6 +29,8 @@ from app.api.routes.library import router as library_router
 from app.api.routes.cycle import router as cycle_router
 from app.api.routes.versions import router as versions_router
 from app.api.routes.users import router as users_router
+from app.api.routes.media import router as media_router
+from app.api.routes.reviews import router as reviews_router
 
 settings = get_settings()
 
@@ -79,6 +81,8 @@ app.include_router(library_router, prefix="/api/v1/library", tags=["library"])
 app.include_router(cycle_router, prefix="/api/v1/cycle", tags=["cycle"])
 app.include_router(versions_router, prefix="/api/v1/versions", tags=["versions"])
 app.include_router(users_router, prefix="/api/v1/users", tags=["users"])
+app.include_router(media_router, prefix="/api/v1/media", tags=["media"])
+app.include_router(reviews_router, prefix="/api/v1/reviews", tags=["reviews"])
 
 
 

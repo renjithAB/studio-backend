@@ -66,6 +66,7 @@ def list_templates(
                 self.description = task_tmpl.description
                 self.thumbnail_url = None
                 self.tag = "task"
+                self.domain = task_tmpl.domain_code
                 self.has_episode = False
                 self.is_active = task_tmpl.is_active
                 self.applicable_templates = ",".join(task_tmpl.applies_to_templates)
@@ -90,6 +91,7 @@ def list_templates(
                 self.description = role.description
                 self.thumbnail_url = None
                 self.tag = "role"
+                self.domain = None
                 self.has_episode = False
                 self.is_active = role.is_active
                 self.applicable_templates = None
@@ -114,6 +116,7 @@ def list_templates(
                 self.description = perm.description
                 self.thumbnail_url = None
                 self.tag = "permission"
+                self.domain = None
                 self.has_episode = False
                 self.is_active = perm.is_active
                 self.applicable_templates = None

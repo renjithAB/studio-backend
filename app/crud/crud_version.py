@@ -8,20 +8,31 @@ class CRUDVersion:
         return db.query(Version).filter(Version.id == id, Version.is_active == True).first()
 
     def create(self, db: Session, *, obj_in: VersionCreate, created_by: Optional[int] = None) -> Version:
-        # Generate sequential code starting from 000001
-        from sqlalchemy import text
-        try:
-            next_val = db.execute(text("SELECT nextval('version_code_seq')")).scalar()
+        from sqlalchemy import func, text
+        
+        if obj_in.publish_id:
+            # Generate sequential code scoped to the specific publish_type
+            max_code = db.query(func.max(Version.code)).filter(Version.publish_id == obj_in.publish_id).scalar()
+            
+            if max_code and max_code.isdigit():
+                next_val = int(max_code) + 1
+            else:
+                next_val = 1
+                
             code_seq = f"{next_val:06d}"
-        except Exception:
-            from sqlalchemy import func
-            max_id = db.query(func.max(Version.id)).scalar() or 0
-            code_seq = f"{max_id + 1:06d}"
+        else:
+            # Fallback to global sequence if no publish_id is provided
+            try:
+                next_val = db.execute(text("SELECT nextval('version_code_seq')")).scalar()
+                code_seq = f"{next_val:06d}"
+            except Exception:
+                max_id = db.query(func.max(Version.id)).scalar() or 0
+                code_seq = f"{max_id + 1:06d}"
 
         db_obj = Version(
             code=code_seq,
             name=obj_in.name,
-            version_number=obj_in.version_number,
+            version_number=f"v{code_seq}",
             project_id=obj_in.project_id,
             publish_id=obj_in.publish_id,
             asset_id=obj_in.asset_id,

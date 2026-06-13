@@ -41,6 +41,8 @@ class Version(BaseModel):
     
     thumbnail_url = Column(String(256), nullable=True)
     movie_url = Column(String(256), nullable=True)
+    image_path = Column(String(512), nullable=True)
+    video_path = Column(String(512), nullable=True)
     
     # file_path = Column(String(512), nullable=True)
     # file_size = Column(Integer, nullable=True)
@@ -57,6 +59,7 @@ class Version(BaseModel):
     
     # Relationships - REMOVED the 'files' relationship
     project = relationship('Project')
+    publish_type = relationship('PublishType')
     asset = relationship('Asset')
     variant = relationship('Variant')
     episode = relationship('Episode')

@@ -935,3 +935,53 @@ INSERT INTO role_permissions (role_id, permission_id)
 SELECT r.id, p.id
 FROM roles r, permissions p
 ON CONFLICT DO NOTHING;
+
+
+-- Add image_path and video_path to versions table
+ALTER TABLE versions ADD COLUMN IF NOT EXISTS image_path VARCHAR(512);
+ALTER TABLE versions ADD COLUMN IF NOT EXISTS video_path VARCHAR(512);
+
+CREATE TABLE IF NOT EXISTS media_tokens (
+    token UUID PRIMARY KEY,
+    file_path VARCHAR(512) NOT NULL,
+    is_used BOOLEAN DEFAULT FALSE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    expires_at TIMESTAMP WITH TIME ZONE NOT NULL
+);
+
+
+-- ==========================================
+-- REVIEWS AND ANNOTATIONS
+-- ==========================================
+
+CREATE TABLE IF NOT EXISTS reviews (
+    id BIGSERIAL PRIMARY KEY,
+    version_id BIGINT NOT NULL REFERENCES versions(id) ON DELETE CASCADE,
+    created_by BIGINT NOT NULL REFERENCES users(id),
+    status VARCHAR(64) DEFAULT 'pending',
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS review_frames (
+    id BIGSERIAL PRIMARY KEY,
+    review_id BIGINT NOT NULL REFERENCES reviews(id) ON DELETE CASCADE,
+    media_type VARCHAR(16) NOT NULL,
+    timecode DOUBLE PRECISION,
+    annotation_data JSONB,
+    description TEXT,
+    image_data TEXT,
+    created_by BIGINT NOT NULL REFERENCES users(id),
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS review_comments (
+    id BIGSERIAL PRIMARY KEY,
+    review_id BIGINT NOT NULL REFERENCES reviews(id) ON DELETE CASCADE,
+    review_frame_id BIGINT REFERENCES review_frames(id) ON DELETE CASCADE,
+    parent_comment_id BIGINT REFERENCES review_comments(id) ON DELETE CASCADE,
+    comment TEXT NOT NULL,
+    created_by BIGINT NOT NULL REFERENCES users(id),
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);

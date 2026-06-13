@@ -37,3 +37,4 @@ __all__ = [
     'Version',
     'File',
 ]
+from app.models.review import Review, ReviewFrame, ReviewComment
