@@ -63,3 +63,20 @@ def verify_csrf_token(token: str) -> bool:
 def create_session_token(user_id: str) -> str:
     """Create a session token (JWT)."""
     return create_access_token({"sub": str(user_id)})
+
+import hashlib
+
+def generate_api_token() -> tuple[str, str, str]:
+    """
+    Generate a new API token.
+    Returns: (prefix, plain_token, hashed_token)
+    """
+    prefix = secrets.token_urlsafe(8)[:8]
+    secret = secrets.token_urlsafe(32)
+    plain_token = f"{prefix}.{secret}"
+    hashed_token = hashlib.sha256(plain_token.encode()).hexdigest()
+    return prefix, plain_token, hashed_token
+
+def hash_api_token(plain_token: str) -> str:
+    """Hash a plain API token for comparison."""
+    return hashlib.sha256(plain_token.encode()).hexdigest()

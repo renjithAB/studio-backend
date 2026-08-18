@@ -16,6 +16,8 @@ from app.models.task import Task
 from app.models.task_template import TaskTemplate
 from app.models.version import Version
 from app.models.file import File
+from app.models.api_token import ApiToken
+from app.models.review import Review, ReviewFrame, ReviewComment
 
 __all__ = [
     'Episode',
@@ -36,5 +38,5 @@ __all__ = [
     'TaskTemplate',
     'Version',
     'File',
+    'ApiToken',
 ]
-from app.models.review import Review, ReviewFrame, ReviewComment

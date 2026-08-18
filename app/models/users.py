@@ -38,3 +38,6 @@ class User(BaseModel):
     # Relationships to dedicated Role and Permission models
     role = relationship('Role', foreign_keys=[role_id], lazy='selectin')
     permission = relationship('Permission', foreign_keys=[permission_id], lazy='selectin')
+    
+    # API Tokens relationship
+    api_tokens = relationship('ApiToken', back_populates='user', cascade='all, delete-orphan')

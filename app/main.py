@@ -83,6 +83,8 @@ app.include_router(versions_router, prefix="/api/v1/versions", tags=["versions"]
 app.include_router(users_router, prefix="/api/v1/users", tags=["users"])
 app.include_router(media_router, prefix="/api/v1/media", tags=["media"])
 app.include_router(reviews_router, prefix="/api/v1/reviews", tags=["reviews"])
+from app.api.routes.api_tokens import router as api_tokens_router
+app.include_router(api_tokens_router, prefix="/api/v1/api_tokens", tags=["api_tokens"])
 
 
 
